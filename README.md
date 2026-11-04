@@ -2,7 +2,7 @@
 
 純前端的教室排座位工具。建立教室配置、匯入學生名單、設定排座規則，安排座位後輸出座位表，所有資料只留在使用者的瀏覽器。
 
-目前可編輯教室格線：以筆刷或矩形設定座位、走道與禁坐區，調整教室尺寸、座位編號與格子大小，並支援復原、重做與本機自動儲存。手機為唯讀檢視，平板與電腦可完整編輯。
+目前可編輯教室格線：以筆刷或矩形設定座位、走道與禁坐區，調整教室尺寸、座位編號與格子大小，並支援本機自動儲存。名單頁可匯入 CSV、TSV 或 XLSX，確認欄位映射後合併或覆蓋名單，也能手動新增、編輯、刪除人員，建立標籤並批次套用。復原與重做為所有分頁共用的全域操作，可從頁首按鈕或 Ctrl/Cmd+Z、Ctrl/Cmd+Shift+Z、Ctrl+Y 使用。手機為唯讀檢視，平板與電腦可完整編輯。
 
 ## 開發
 
@@ -39,7 +39,7 @@ npm run dev
 src/
   app/          應用程式外殼、分頁定義與全域 Provider
   components/   共用介面元件
-  features/     教室編輯器與專案狀態
+  features/     教室編輯器、名單管理與專案狀態
   pages/        五個排座流程頁面
   styles/       Tailwind 進入點與設計權杖
   test/         測試環境設定
@@ -48,4 +48,4 @@ src/
 
 ## 技術
 
-Vite、React、TypeScript、Tailwind CSS、Radix UI、Vitest 與 React Testing Library。
+Vite、React、TypeScript、Tailwind CSS、Radix UI、Zustand、Papa Parse、read-excel-file、Vitest 與 React Testing Library。
