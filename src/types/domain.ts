@@ -140,9 +140,13 @@ export interface RuleViolation {
   personIds: string[]
 }
 
+export type AssignmentSource = 'auto' | 'manual'
+
 export interface AssignmentResult {
   id: string
   createdAt: string
+  /** 建立方式；舊版存檔沒有此欄位時視為自動排座。 */
+  source?: AssignmentSource
   seed: string
   /** 產生結果時的輸入版本。 */
   inputRevision: string
