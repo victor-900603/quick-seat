@@ -72,4 +72,12 @@
       linear-gradient(90deg, rgb(31 42 38 / 0.045) 1px, transparent 1px);
     background-size: 24px 24px;
   }
+
+  .aisle-hatch {
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0 5px,
+      rgb(104 115 107 / 0.13) 5px 6px
+    );
+  }
 }
