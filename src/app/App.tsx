@@ -1,6 +1,8 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { type ComponentType, useState } from 'react'
 import { StepIcon } from '../components/StepIcon'
+import { useAutosave, type SaveStatus } from '../features/project/useAutosave'
+import { useProjectStore } from '../features/project/projectStore'
 import { ExportPage } from '../pages/ExportPage'
 import { LayoutPage } from '../pages/LayoutPage'
 import { RosterPage } from '../pages/RosterPage'
@@ -42,8 +44,16 @@ function SeatMark() {
   )
 }
 
+const SAVE_LABELS: Record<SaveStatus, string> = {
+  saved: '本機儲存',
+  saving: '儲存中',
+  error: '儲存失敗',
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('classroom')
+  const project = useProjectStore((state) => state.project)
+  const saveStatus = useAutosave(project)
 
   return (
     <Tabs.Root
@@ -70,10 +80,16 @@ function App() {
               <p className="font-mono text-[9px] tracking-[0.2em] text-chalk/45">
                 專案
               </p>
-              <p className="text-xs text-chalk/85">未命名教室</p>
+              <p className="text-xs text-chalk/85">{project.name}</p>
             </div>
-            <span className="border border-chalk/25 px-2.5 py-1 font-mono text-[9px] tracking-[0.15em] text-chalk/60">
-              本機儲存
+            <span
+              className={`border px-2.5 py-1 font-mono text-[9px] tracking-[0.15em] ${
+                saveStatus === 'error'
+                  ? 'border-chalk-accent/60 text-chalk-accent'
+                  : 'border-chalk/25 text-chalk/60'
+              }`}
+            >
+              {SAVE_LABELS[saveStatus]}
             </span>
           </div>
         </div>

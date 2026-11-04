@@ -18,6 +18,7 @@ export const DEFAULT_CLASSROOM_COLS = 6
 export const DEFAULT_CLASSROOM_ROWS = 5
 export const MIN_CELL_SIZE = 40
 export const MAX_CELL_SIZE = 64
+export const DEFAULT_CELL_SIZE = 52
 
 export const DEFAULT_NUMBERING: SeatNumbering = {
   pattern: '{index}',
