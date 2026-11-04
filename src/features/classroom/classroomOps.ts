@@ -233,19 +233,18 @@ export function setCellTypes(
   }
 }
 
-export function fillRect(
-  classroom: Classroom,
+export function positionsInRect(
+  classroom: Pick<Classroom, 'cols' | 'rows'>,
   from: CellPosition,
   to: CellPosition,
-  type: CellType,
-): Classroom {
+): CellPosition[] {
   const startRow = Math.max(0, Math.min(from.row, to.row))
   const endRow = Math.min(classroom.rows - 1, Math.max(from.row, to.row))
   const startCol = Math.max(0, Math.min(from.col, to.col))
   const endCol = Math.min(classroom.cols - 1, Math.max(from.col, to.col))
 
   if (startRow > endRow || startCol > endCol) {
-    return classroom
+    return []
   }
 
   const positions: CellPosition[] = []
@@ -256,7 +255,20 @@ export function fillRect(
     }
   }
 
-  return setCellTypes(classroom, positions, type)
+  return positions
+}
+
+export function fillRect(
+  classroom: Classroom,
+  from: CellPosition,
+  to: CellPosition,
+  type: CellType,
+): Classroom {
+  return setCellTypes(
+    classroom,
+    positionsInRect(classroom, from, to),
+    type,
+  )
 }
 
 export function setRowType(
