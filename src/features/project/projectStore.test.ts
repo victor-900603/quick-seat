@@ -254,4 +254,299 @@ describe('projectStore', () => {
       'B',
     ])
   })
+
+  function addPeople(count: number) {
+    for (let index = 1; index <= count; index += 1) {
+      useProjectStore.getState().addPerson({
+        name: `學生 ${index}`,
+        studentNo: String(index).padStart(2, '0'),
+      })
+    }
+
+    useProjectStore.temporal.getState().clear()
+  }
+
+  const seatingConfig = {
+    occupancy: { kind: 'full' as const },
+    allocation: {
+      kind: 'ordered' as const,
+      orderBy: 'studentNo' as const,
+      fill: 'row-major' as const,
+    },
+    seed: 'store-seed',
+    partial: false,
+  }
+
+  it('執行排座後保存結果，且只寫入一筆歷史', () => {
+    addPeople(3)
+
+    const outcome = useProjectStore.getState().runSeating(seatingConfig)
+
+    expect(outcome.ok).toBe(true)
+    expect(
+      useProjectStore.getState().project.currentAssignment?.assignments,
+    ).toEqual({
+      r0c0: expect.any(String),
+      r0c1: expect.any(String),
+      r0c2: expect.any(String),
+    })
+    expect(history().pastStates).toHaveLength(1)
+  })
+
+  it('第一次安排人員時自動建立手動座位表', () => {
+    addPeople(2)
+
+    const personId =
+      useProjectStore.getState().project.roster.persons[0].id
+    const outcome = useProjectStore
+      .getState()
+      .assignUnassigned(personId, 'r0c0', {
+        manualConfig: seatingConfig,
+      })
+
+    expect(outcome.ok).toBe(true)
+    const assignment =
+      useProjectStore.getState().project.currentAssignment
+    expect(assignment?.source).toBe('manual')
+    expect(assignment?.assignments).toEqual({ r0c0: personId })
+    expect(assignment?.unassignedPersonIds).toHaveLength(1)
+    expect(history().pastStates).toHaveLength(1)
+
+    const secondPersonId =
+      useProjectStore.getState().project.roster.persons[1].id
+    const placed = useProjectStore
+      .getState()
+      .assignUnassigned(secondPersonId, 'r0c1')
+
+    expect(placed.ok).toBe(true)
+    expect(
+      useProjectStore.getState().project.currentAssignment?.assignments.r0c1,
+    ).toBe(secondPersonId)
+    expect(history().pastStates).toHaveLength(2)
+  })
+
+  it('名單為空時不建立手動座位表', () => {
+    const outcome = useProjectStore
+      .getState()
+      .assignUnassigned('missing-person', 'r0c0', {
+        manualConfig: seatingConfig,
+      })
+
+    expect(outcome.ok).toBe(false)
+    expect(useProjectStore.getState().project.currentAssignment).toBeNull()
+    expect(history().pastStates).toHaveLength(0)
+  })
+
+  it('沒有可用座位時不建立手動座位表', () => {
+    const classroom =
+      useProjectStore.getState().project.classroom
+    const positions = Array.from(
+      { length: classroom.cols * classroom.rows },
+      (_, index) => ({
+        row: Math.floor(index / classroom.cols),
+        col: index % classroom.cols,
+      }),
+    )
+    useProjectStore.getState().applyCellTypes(positions, 'blocked')
+    addPeople(1)
+    const personId =
+      useProjectStore.getState().project.roster.persons[0].id
+    history().clear()
+
+    const outcome = useProjectStore
+      .getState()
+      .assignUnassigned(personId, 'r0c0', {
+        manualConfig: seatingConfig,
+      })
+
+    expect(outcome.ok).toBe(false)
+    expect(useProjectStore.getState().project.currentAssignment).toBeNull()
+    expect(history().pastStates).toHaveLength(0)
+  })
+
+  it('容量不足時不寫入結果或歷史', () => {
+    useProjectStore.getState().resizeRoom(2, 2)
+    addPeople(5)
+
+    const outcome = useProjectStore.getState().runSeating(seatingConfig)
+
+    expect(outcome.ok).toBe(false)
+    expect(useProjectStore.getState().project.currentAssignment).toBeNull()
+    expect(history().pastStates).toHaveLength(0)
+  })
+
+  it('部分排座保留未分配人員', () => {
+    useProjectStore.getState().resizeRoom(2, 2)
+    addPeople(5)
+
+    const outcome = useProjectStore.getState().runSeating({
+      ...seatingConfig,
+      partial: true,
+    })
+
+    expect(outcome.ok).toBe(true)
+    expect(
+      useProjectStore.getState().project.currentAssignment
+        ?.unassignedPersonIds,
+    ).toHaveLength(1)
+  })
+
+  it('切換座位顯示模式並可復原', () => {
+    useProjectStore.getState().setDisplay('both')
+    expect(useProjectStore.getState().project.settings.display).toBe('both')
+
+    history().undo()
+    expect(useProjectStore.getState().project.settings.display).toBe('name')
+  })
+
+  it('鎖定與解除鎖定同步更新結果與鎖定意圖', () => {
+    addPeople(2)
+    useProjectStore.getState().runSeating(seatingConfig)
+    const personId =
+      useProjectStore.getState().project.roster.persons[0].id
+
+    useProjectStore.getState().togglePersonLock(personId)
+    expect(useProjectStore.getState().project.lockedPersonIds).toEqual([
+      personId,
+    ])
+    expect(
+      useProjectStore.getState().project.currentAssignment?.lockedPersonIds,
+    ).toContain(personId)
+
+    useProjectStore.getState().togglePersonLock(personId)
+    expect(useProjectStore.getState().project.lockedPersonIds).toEqual([])
+    expect(
+      useProjectStore.getState().project.currentAssignment?.lockedPersonIds,
+    ).not.toContain(personId)
+  })
+
+  it('拖曳互換座位並可復原', () => {
+    addPeople(2)
+    useProjectStore.getState().runSeating(seatingConfig)
+    const assignmentsBefore =
+      useProjectStore.getState().project.currentAssignment!.assignments
+
+    const result = useProjectStore
+      .getState()
+      .moveSeatOccupant('r0c0', 'r0c1')
+
+    expect(result.ok).toBe(true)
+    expect(
+      useProjectStore.getState().project.currentAssignment!.assignments,
+    ).toEqual({
+      r0c0: assignmentsBefore.r0c1,
+      r0c1: assignmentsBefore.r0c0,
+    })
+
+    history().undo()
+    expect(
+      useProjectStore.getState().project.currentAssignment!.assignments,
+    ).toEqual(assignmentsBefore)
+  })
+
+  it('鎖定人員不可移動，但可選擇覆蓋鎖定的目標', () => {
+    addPeople(2)
+    useProjectStore.getState().runSeating(seatingConfig)
+    const people = useProjectStore.getState().project.roster.persons
+    useProjectStore.getState().togglePersonLock(people[0].id)
+
+    const blocked = useProjectStore
+      .getState()
+      .moveSeatOccupant('r0c1', 'r0c0')
+    expect(blocked.ok).toBe(false)
+
+    const lockedTarget = useProjectStore
+      .getState()
+      .moveSeatOccupant('r0c1', 'r0c0', {
+        allowLockedTarget: true,
+      })
+    expect(lockedTarget.ok).toBe(true)
+    expect(lockedTarget.unlockedPersonId).toBe(people[0].id)
+    expect(useProjectStore.getState().project.lockedPersonIds).toEqual([])
+  })
+
+  it('安排未分配人員時可將原佔用者退回未分配', () => {
+    useProjectStore.getState().resizeRoom(2, 2)
+    addPeople(5)
+    useProjectStore.getState().runSeating({
+      ...seatingConfig,
+      partial: true,
+    })
+    const project = useProjectStore.getState().project
+    const unassignedId = project.currentAssignment!.unassignedPersonIds[0]
+    const targetSeat = Object.keys(
+      project.currentAssignment!.assignments,
+    )[0]
+
+    const outcome = useProjectStore
+      .getState()
+      .assignUnassigned(unassignedId, targetSeat)
+
+    expect(outcome.ok).toBe(true)
+    expect(
+      useProjectStore.getState().project.currentAssignment!.assignments[
+        targetSeat
+      ],
+    ).toBe(unassignedId)
+    expect(
+      useProjectStore.getState().project.currentAssignment
+        ?.unassignedPersonIds,
+    ).toContain(outcome.displacedPersonId)
+  })
+
+  it('解除分配後人員進入未分配並解除鎖定', () => {
+    addPeople(2)
+    useProjectStore.getState().runSeating(seatingConfig)
+    const personId =
+      useProjectStore.getState().project.roster.persons[0].id
+    useProjectStore.getState().togglePersonLock(personId)
+
+    useProjectStore.getState().unassignPerson(personId)
+
+    expect(
+      useProjectStore.getState().project.currentAssignment
+        ?.unassignedPersonIds,
+    ).toContain(personId)
+    expect(useProjectStore.getState().project.lockedPersonIds).not.toContain(
+      personId,
+    )
+  })
+
+  it('教室格子改為走道後清除該座位的分配與鎖定', () => {
+    addPeople(2)
+    useProjectStore.getState().runSeating(seatingConfig)
+    const assignment =
+      useProjectStore.getState().project.currentAssignment!
+    const occupiedSeat = Object.keys(assignment.assignments)[1]
+    const occupiedPersonId = assignment.assignments[occupiedSeat]
+    const match = /^r(\d+)c(\d+)$/.exec(occupiedSeat)!
+
+    useProjectStore.getState().togglePersonLock(occupiedPersonId)
+    useProjectStore.getState().applyCellTypes(
+      [{ row: Number(match[1]), col: Number(match[2]) }],
+      'aisle',
+    )
+
+    const next = useProjectStore.getState().project
+    expect(next.currentAssignment!.assignments[occupiedSeat]).toBeUndefined()
+    expect(next.currentAssignment!.unassignedPersonIds).toContain(
+      occupiedPersonId,
+    )
+    expect(next.lockedPersonIds).not.toContain(occupiedPersonId)
+  })
+
+  it('清除排座結果但保留鎖定意圖', () => {
+    addPeople(2)
+    useProjectStore.getState().runSeating(seatingConfig)
+    const personId =
+      useProjectStore.getState().project.roster.persons[0].id
+    useProjectStore.getState().togglePersonLock(personId)
+
+    useProjectStore.getState().clearAssignment()
+
+    expect(useProjectStore.getState().project.currentAssignment).toBeNull()
+    expect(useProjectStore.getState().project.lockedPersonIds).toContain(
+      personId,
+    )
+  })
 })
