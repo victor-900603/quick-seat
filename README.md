@@ -1,32 +1,48 @@
-# React + TypeScript + Vite
+# QuickSeat
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+純前端的教室排座位工具。建立教室配置、匯入學生名單、設定排座規則，安排座位後輸出座位表，所有資料只留在使用者的瀏覽器。
 
-Currently, two official plugins are available:
+## 開發
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+需求：Node.js 22.12 以上。
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## 指令
+
+| 指令 | 用途 |
+| --- | --- |
+| `npm run dev` | 啟動開發伺服器 |
+| `npm run build` | 型別檢查並建置靜態檔案 |
+| `npm run preview` | 預覽建置結果 |
+| `npm run lint` | 執行 Oxlint 靜態檢查 |
+| `npm test` | 以監看模式執行測試 |
+| `npm run test:run` | 執行一次測試 |
+| `npm run coverage` | 執行測試並產生覆蓋率報告 |
+
+## 部署
+
+推送至 `main` 分支後，GitHub Actions 會依序執行靜態檢查、測試與建置，再部署到 GitHub Pages。
+
+- Pages 來源需設為「GitHub Actions」。
+- 建置時的 `base` 在 GitHub Actions 環境下為 `/quick-seat/`，本機為 `/`。
+- 部署流程位於 `.github/workflows/deploy.yml`。
+
+## 專案結構
+
+```text
+src/
+  app/          應用程式外殼、分頁定義與全域 Provider
+  components/   共用介面元件
+  pages/        五個排座流程頁面
+  styles/       Tailwind 進入點與設計權杖
+  test/         測試環境設定
+  types/        領域型別
+```
+
+## 技術
+
+Vite、React、TypeScript、Tailwind CSS、Radix UI、Vitest 與 React Testing Library。
