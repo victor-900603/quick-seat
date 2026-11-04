@@ -1,0 +1,32 @@
+# 相依套件
+node_modules/
+
+# 建置產物
+dist/
+dist-ssr/
+coverage/
+
+# 本機設定
+*.local
+.env
+.env.*
+
+# 編輯器與作業系統
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 日誌
+logs/
+*.log
+npm-debug.log*
+
+# 規格文件（僅供本機參考）
+sdd/
