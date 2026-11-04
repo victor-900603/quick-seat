@@ -1,0 +1,75 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans:
+    'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  --font-display:
+    'Noto Serif TC', 'Songti TC', 'PingFang TC', 'Microsoft JhengHei', serif;
+  --font-mono:
+    'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --color-board: #173b32;
+  --color-chalk: #f2f0e3;
+  --color-paper: #f6f4ec;
+  --color-surface: #fffdf7;
+  --color-ink: #1f2a26;
+  --color-muted: #68736b;
+  --color-line: #d8d5c7;
+  --color-accent: #2f6b58;
+  --color-accent-soft: #e2ebe5;
+  --color-mark: #b8502f;
+  --color-chalk-accent: #e6c56a;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-height: 1.25;
+    font-weight: 600;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-mark);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .board-grid {
+    background-image:
+      linear-gradient(rgb(242 240 227 / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(242 240 227 / 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .paper-grid {
+    background-image:
+      linear-gradient(rgb(31 42 38 / 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(31 42 38 / 0.045) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}
