@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import type { CellType } from '../../types/domain'
-import { useHistoryControls, useProjectStore } from '../project/projectStore'
+import { useProjectStore } from '../project/projectStore'
 import { ClassroomGrid } from './components/ClassroomGrid'
 import { EditorToolbar } from './components/EditorToolbar'
 import { PropertiesPanel } from './components/PropertiesPanel'
@@ -18,7 +18,7 @@ import {
 } from './classroomOps'
 import { CELL_TYPE_LABELS, TOOLS, type EditorTool } from './editorTypes'
 import { getSeatRefs, seatId } from './numbering'
-import { useReadOnlyMode } from './useReadOnlyMode'
+import { useReadOnlyMode } from '../../lib/useReadOnlyMode'
 
 const LEGEND: { type: CellType; className: string }[] = [
   { type: 'seat', className: 'border-accent/40 bg-accent-soft' },
@@ -50,7 +50,6 @@ export function ClassroomEditor() {
   )
   const updateSeatCode = useProjectStore((state) => state.updateSeatCode)
   const updateCellSize = useProjectStore((state) => state.updateCellSize)
-  const { canUndo, canRedo, undo, redo } = useHistoryControls()
   const readOnly = useReadOnlyMode()
 
   const [tool, setTool] = useState<EditorTool>('select')
@@ -195,24 +194,6 @@ export function ClassroomEditor() {
       return
     }
 
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
-      event.preventDefault()
-
-      if (event.shiftKey) {
-        redo()
-      } else {
-        undo()
-      }
-
-      return
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
-      event.preventDefault()
-      redo()
-      return
-    }
-
     const shortcut = TOOLS.find((item) => item.shortcut === event.key)
 
     if (shortcut) {
@@ -314,13 +295,9 @@ export function ClassroomEditor() {
       <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_310px]">
         <section className="min-w-0 border border-line bg-surface">
           <EditorToolbar
-            canRedo={canRedo}
-            canUndo={canUndo}
             disabled={readOnly}
             onRectTypeChange={setRectType}
-            onRedo={redo}
             onToolChange={setTool}
-            onUndo={undo}
             onZoomChange={setZoom}
             rectType={rectType}
             tool={tool}

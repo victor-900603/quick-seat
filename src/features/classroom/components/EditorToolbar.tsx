@@ -1,17 +1,13 @@
 import type { CellType } from '../../../types/domain'
 import { CELL_TYPE_LABELS } from '../editorTypes'
 import { TOOLS, type EditorTool } from '../editorTypes'
-import { RedoIcon, ToolIcon, UndoIcon } from './ToolIcon'
+import { ToolIcon } from './ToolIcon'
 
 interface EditorToolbarProps {
   tool: EditorTool
   onToolChange: (tool: EditorTool) => void
   rectType: CellType
   onRectTypeChange: (type: CellType) => void
-  canUndo: boolean
-  canRedo: boolean
-  onUndo: () => void
-  onRedo: () => void
   zoom: number
   onZoomChange: (zoom: number) => void
   disabled: boolean
@@ -26,10 +22,6 @@ export function EditorToolbar({
   onToolChange,
   rectType,
   onRectTypeChange,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
   zoom,
   onZoomChange,
   disabled,
@@ -99,29 +91,6 @@ export function EditorToolbar({
       ) : null}
 
       <div className="ml-auto flex items-center gap-3">
-        <div className="flex items-center gap-1">
-          <button
-            aria-label="復原"
-            className="border border-line bg-surface p-1.5 text-muted transition-colors hover:border-accent/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-35"
-            disabled={disabled || !canUndo}
-            onClick={onUndo}
-            title="復原（Ctrl+Z）"
-            type="button"
-          >
-            <UndoIcon />
-          </button>
-          <button
-            aria-label="重做"
-            className="border border-line bg-surface p-1.5 text-muted transition-colors hover:border-accent/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-35"
-            disabled={disabled || !canRedo}
-            onClick={onRedo}
-            title="重做（Ctrl+Shift+Z）"
-            type="button"
-          >
-            <RedoIcon />
-          </button>
-        </div>
-
         <div className="flex items-center border border-line bg-paper">
           <button
             aria-label="縮小"

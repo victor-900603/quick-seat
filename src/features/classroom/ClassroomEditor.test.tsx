@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import App from '../../app/App'
+import { AppProviders } from '../../app/providers'
 import { createDefaultProject } from '../project/defaultProject'
 import { useProjectStore } from '../project/projectStore'
 import { ClassroomEditor } from './ClassroomEditor'
@@ -39,7 +41,11 @@ describe('ClassroomEditor', () => {
 
   it('選取格子後可切換型別，並以一次復原回到原狀', async () => {
     const user = userEvent.setup()
-    render(<ClassroomEditor />)
+    render(
+      <AppProviders>
+        <App />
+      </AppProviders>,
+    )
 
     fireEvent.pointerDown(getCell(0, 0), {
       pointerType: 'mouse',
@@ -63,7 +69,11 @@ describe('ClassroomEditor', () => {
 
   it('拖曳上色只建立一筆歷史，復原會還原整段筆畫', async () => {
     const user = userEvent.setup()
-    render(<ClassroomEditor />)
+    render(
+      <AppProviders>
+        <App />
+      </AppProviders>,
+    )
 
     await user.click(screen.getByRole('button', { name: '走道（3）' }))
 

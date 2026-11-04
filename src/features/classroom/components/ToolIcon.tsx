@@ -75,39 +75,3 @@ export function ToolIcon({ tool, className = 'h-4 w-4' }: ToolIconProps) {
       return null
   }
 }
-
-export function UndoIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={1.5}
-      viewBox="0 0 20 20"
-    >
-      <path d="M7 5 3.5 8.5 7 12" />
-      <path d="M3.5 8.5H12a4.5 4.5 0 0 1 0 9H9" />
-    </svg>
-  )
-}
-
-export function RedoIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={1.5}
-      viewBox="0 0 20 20"
-    >
-      <path d="m13 5 3.5 3.5L13 12" />
-      <path d="M16.5 8.5H8a4.5 4.5 0 0 0 0 9h3" />
-    </svg>
-  )
-}

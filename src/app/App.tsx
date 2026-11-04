@@ -1,8 +1,11 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { type ComponentType, useState } from 'react'
 import { StepIcon } from '../components/StepIcon'
+import { HistoryControls } from '../features/project/HistoryControls'
 import { useAutosave, type SaveStatus } from '../features/project/useAutosave'
+import { useHistoryShortcuts } from '../features/project/useHistoryShortcuts'
 import { useProjectStore } from '../features/project/projectStore'
+import { useReadOnlyMode } from '../lib/useReadOnlyMode'
 import { ExportPage } from '../pages/ExportPage'
 import { LayoutPage } from '../pages/LayoutPage'
 import { RosterPage } from '../pages/RosterPage'
@@ -54,6 +57,9 @@ function App() {
   const [activeTab, setActiveTab] = useState<TabId>('classroom')
   const project = useProjectStore((state) => state.project)
   const saveStatus = useAutosave(project)
+  const readOnly = useReadOnlyMode()
+
+  useHistoryShortcuts({ disabled: readOnly })
 
   return (
     <Tabs.Root
@@ -63,10 +69,10 @@ function App() {
     >
       <header className="board-grid border-b border-board bg-board text-chalk">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-          <div className="flex items-center gap-3.5">
+          <div className="flex shrink-0 items-center gap-3.5">
             <SeatMark />
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-chalk/55">
+              <p className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.3em] text-chalk/55">
                 SEATING PLANNER
               </p>
               <h1 className="font-display text-xl tracking-wide text-chalk">
@@ -75,15 +81,16 @@ function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex shrink-0 items-center gap-3">
             <div className="hidden text-right sm:block">
               <p className="font-mono text-[9px] tracking-[0.2em] text-chalk/45">
                 專案
               </p>
               <p className="text-xs text-chalk/85">{project.name}</p>
             </div>
+            <HistoryControls disabled={readOnly} />
             <span
-              className={`border px-2.5 py-1 font-mono text-[9px] tracking-[0.15em] ${
+              className={`shrink-0 whitespace-nowrap border px-2.5 py-1 font-mono text-[9px] tracking-[0.15em] ${
                 saveStatus === 'error'
                   ? 'border-chalk-accent/60 text-chalk-accent'
                   : 'border-chalk/25 text-chalk/60'
