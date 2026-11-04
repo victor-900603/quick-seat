@@ -1,4 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import type { PinRule, SeparateRule } from '../../types/domain'
+import {
+  buildImportPlan,
+  parseTextTable,
+} from '../roster/importRoster'
+import { createTagDef } from '../roster/rosterOps'
 import { createDefaultProject } from './defaultProject'
 import { useProjectStore } from './projectStore'
 
@@ -94,5 +100,158 @@ describe('projectStore', () => {
 
     expect(useProjectStore.getState().project.name).toBe('教室 5')
     expect(history().pastStates).toHaveLength(0)
+  })
+
+  it('新增、更新與刪除人員，並拒絕空白姓名', () => {
+    const store = useProjectStore.getState()
+    const personId = store.addPerson({
+      name: ' 林品妤 ',
+      studentNo: ' A01 ',
+    })
+
+    expect(personId).not.toBeNull()
+    expect(store.addPerson({ name: '   ' })).toBeNull()
+
+    useProjectStore.getState().updatePerson(personId!, {
+      note: '班長',
+    })
+
+    expect(useProjectStore.getState().project.roster.persons[0]).toMatchObject(
+      {
+        name: '林品妤',
+        studentNo: 'A01',
+        note: '班長',
+      },
+    )
+
+    useProjectStore.getState().deletePerson(personId!)
+    expect(useProjectStore.getState().project.roster.persons).toHaveLength(0)
+  })
+
+  it('管理標籤名稱與型別，變更型別時清除人員值', () => {
+    const store = useProjectStore.getState()
+    const tagId = store.addTag({
+      name: '組別',
+      type: 'enum',
+      options: ['A', 'B'],
+    })
+    const personId = store.addPerson({
+      name: '甲',
+      tags: { [tagId!]: 'A' },
+    })
+
+    expect(tagId).not.toBeNull()
+    expect(
+      useProjectStore.getState().addTag({ name: '組別', type: 'enum' }),
+    ).toBeNull()
+    expect(
+      useProjectStore.getState().updateTag(tagId!, { type: 'number' }),
+    ).toBe(true)
+    expect(
+      useProjectStore.getState().project.roster.persons[0].tags[tagId!],
+    ).toBeUndefined()
+    expect(
+      useProjectStore.getState().updatePerson(personId!, { name: '  ' }),
+    ).toBe(false)
+  })
+
+  it('刪除標籤時同步移除相關規則，刪除人員時清除鎖定與固定規則', () => {
+    const store = useProjectStore.getState()
+    const tagId = store.addTag({
+      name: '組別',
+      type: 'enum',
+      options: ['A'],
+    })!
+    const personId = store.addPerson({ name: '甲' })!
+
+    const separateRule: SeparateRule = {
+      id: 'separate-1',
+      enabled: true,
+      strength: 'hard',
+      weight: 1,
+      note: '',
+      type: 'separate',
+      tagId,
+      values: [],
+      adjacency: 'all8',
+    }
+    const pinRule: PinRule = {
+      id: 'pin-1',
+      enabled: true,
+      strength: 'hard',
+      weight: 1,
+      note: '',
+      type: 'pin',
+      personId,
+      seatId: 'r0c0',
+    }
+
+    useProjectStore.setState((state) => ({
+      project: {
+        ...state.project,
+        lockedPersonIds: [personId],
+        rules: [separateRule, pinRule],
+      },
+    }))
+    useProjectStore.temporal.getState().clear()
+
+    useProjectStore.getState().deleteTag(tagId)
+    expect(useProjectStore.getState().project.rules).toEqual([pinRule])
+
+    useProjectStore.getState().deletePerson(personId)
+    expect(useProjectStore.getState().project.lockedPersonIds).toEqual([])
+    expect(useProjectStore.getState().project.rules).toEqual([])
+  })
+
+  it('匯入名單時合併既有座號並可復原', () => {
+    const store = useProjectStore.getState()
+    store.addPerson({ name: '舊生', studentNo: 'A01' })
+    const plan = buildImportPlan(
+      parseTextTable('姓名,座號\n甲,A01\n乙,A02\n', 'csv'),
+      { 0: 'name', 1: 'studentNo' },
+      [],
+    )
+
+    const outcome = useProjectStore
+      .getState()
+      .importRoster(plan, 'merge')
+
+    expect(outcome.addedCount).toBe(1)
+    expect(outcome.skippedExistingCount).toBe(1)
+    expect(
+      useProjectStore
+        .getState()
+        .project.roster.persons.map((person) => person.name),
+    ).toEqual(['舊生', '乙'])
+
+    history().undo()
+    expect(
+      useProjectStore
+        .getState()
+        .project.roster.persons.map((person) => person.name),
+    ).toEqual(['舊生'])
+  })
+
+  it('覆蓋名單時保留既有標籤定義並延伸選項', () => {
+    const store = useProjectStore.getState()
+    const tag = createTagDef({
+      name: '組別',
+      type: 'enum',
+      options: ['A'],
+    })
+    store.addTag(tag)
+    const plan = buildImportPlan(
+      parseTextTable('姓名,組別\n甲,B\n', 'csv'),
+      { 0: 'name', 1: `tag:${tag.id}` },
+      [tag],
+    )
+
+    useProjectStore.getState().importRoster(plan, 'replace')
+
+    expect(useProjectStore.getState().project.roster.persons).toHaveLength(1)
+    expect(useProjectStore.getState().project.roster.tags[0].options).toEqual([
+      'A',
+      'B',
+    ])
   })
 })
