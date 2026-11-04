@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: process.env.GITHUB_ACTIONS ? '/quick-seat/' : '/',
   plugins: [react(), tailwindcss()],
   test: {
     environment: 'jsdom',
