@@ -106,6 +106,7 @@ export interface ProjectStore {
   updateTag: (tagId: string, patch: TagPatch) => boolean
   deleteTag: (tagId: string) => void
   importRoster: (plan: ImportPlan, mode: ImportMode) => ImportOutcome
+  replaceProject: (project: Project) => void
 }
 
 function touch(project: Project): void {
@@ -743,6 +744,11 @@ export const useProjectStore = create<ProjectStore>()(
         })
 
         return outcome
+      },
+
+      replaceProject: (project) => {
+        set({ project })
+        useProjectStore.temporal.getState().clear()
       },
     })),
     {

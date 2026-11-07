@@ -549,4 +549,16 @@ describe('projectStore', () => {
       personId,
     )
   })
+
+  it('匯入專案後取代目前專案並清空復原歷史', () => {
+    useProjectStore.getState().renameProject('舊專案')
+    const next = createDefaultProject()
+    next.name = '匯入的專案'
+
+    useProjectStore.getState().replaceProject(next)
+
+    expect(useProjectStore.getState().project.name).toBe('匯入的專案')
+    expect(history().pastStates).toHaveLength(0)
+    expect(history().futureStates).toHaveLength(0)
+  })
 })
