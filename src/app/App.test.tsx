@@ -24,7 +24,7 @@ const tabs = [
   { tab: /名單/, heading: '學生名單' },
   { tab: /規則/, heading: '排座規則' },
   { tab: /排座/, heading: '安排座位' },
-  { tab: /匯出/, heading: '匯出與分享' },
+  { tab: /匯出/, heading: '匯出與備份' },
 ]
 
 function resetStore() {
