@@ -31,17 +31,18 @@ export function ToolIcon({ tool, className = 'h-4 w-4' }: ToolIconProps) {
           <path d="M7 4.5v11" />
         </svg>
       )
-    case 'aisle':
+    case 'aisle-row':
       return (
         <svg {...shared}>
-          <rect
-            height="11"
-            rx="1"
-            strokeDasharray="2.5 2.5"
-            width="13"
-            x="3.5"
-            y="4.5"
-          />
+          <path d="M3.5 6.5h13M3.5 13.5h13" />
+          <path d="M4 10h12" strokeDasharray="2.5 2.5" />
+        </svg>
+      )
+    case 'aisle-col':
+      return (
+        <svg {...shared}>
+          <path d="M6.5 3.5v13M13.5 3.5v13" />
+          <path d="M10 4v12" strokeDasharray="2.5 2.5" />
         </svg>
       )
     case 'blocked':

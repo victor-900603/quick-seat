@@ -13,6 +13,8 @@ import {
   fillRect,
   isInsideClassroom,
   normalizeNumbering,
+  positionsInColumn,
+  positionsInRow,
   resizeClassroom,
   setCellTypes,
   setCodeOverride,
@@ -171,6 +173,22 @@ describe('fillRect', () => {
     expect(fillRect(classroom, { row: 5, col: 0 }, { row: 6, col: 1 }, 'seat')).toBe(
       classroom,
     )
+  })
+})
+
+describe('positionsInRow / positionsInColumn', () => {
+  it('列出完整橫列與直欄的格子座標', () => {
+    const classroom = classroomOf(3, 2)
+
+    expect(positionsInRow(classroom, 1)).toEqual([
+      { row: 1, col: 0 },
+      { row: 1, col: 1 },
+      { row: 1, col: 2 },
+    ])
+    expect(positionsInColumn(classroom, 2)).toEqual([
+      { row: 0, col: 2 },
+      { row: 1, col: 2 },
+    ])
   })
 })
 

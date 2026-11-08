@@ -13,7 +13,9 @@ import { EditorToolbar } from './components/EditorToolbar'
 import { PropertiesPanel } from './components/PropertiesPanel'
 import {
   isInsideClassroom,
+  positionsInColumn,
   positionsInRect,
+  positionsInRow,
   type CellPosition,
 } from './classroomOps'
 import { CELL_TYPE_LABELS, TOOLS, type EditorTool } from './editorTypes'
@@ -101,8 +103,23 @@ export function ClassroomEditor() {
       }
     }
 
+    if (
+      hover &&
+      isInsideClassroom(classroom, hover) &&
+      (tool === 'aisle-row' || tool === 'aisle-col')
+    ) {
+      const positions =
+        tool === 'aisle-row'
+          ? positionsInRow(classroom, hover.row)
+          : positionsInColumn(classroom, hover.col)
+
+      for (const position of positions) {
+        previews.set(seatId(position.row, position.col), 'aisle')
+      }
+    }
+
     return previews
-  }, [classroom, draft, paintType, rectPreview])
+  }, [classroom, draft, hover, paintType, rectPreview, tool])
 
   const finishInteraction = useCallback(() => {
     if (paintType) {
@@ -154,6 +171,16 @@ export function ClassroomEditor() {
 
     if (tool === 'rect') {
       setRectPreview({ start: position, end: position, type: rectType })
+      return
+    }
+
+    if (tool === 'aisle-row' || tool === 'aisle-col') {
+      applyCellTypes(
+        tool === 'aisle-row'
+          ? positionsInRow(classroom, position.row)
+          : positionsInColumn(classroom, position.col),
+        'aisle',
+      )
       return
     }
 
@@ -256,7 +283,7 @@ export function ClassroomEditor() {
             教室配置
           </h2>
           <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted">
-            在方格紙上決定座位、走道與禁坐區。筆刷拖曳與矩形填入都會合併為單一步復原。
+            在方格紙上決定座位、走道與禁坐區。走道以整列或整欄建立，筆刷拖曳與矩形填入都會合併為單一步復原。
           </p>
         </div>
 
@@ -356,26 +383,6 @@ export function ClassroomEditor() {
           cellSize={cellSize}
           classroom={classroom}
           disabled={readOnly}
-          onApplyColumnAisle={() => {
-            if (!visibleSelected) return
-            applyCellTypes(
-              Array.from({ length: classroom.rows }, (_, row) => ({
-                row,
-                col: visibleSelected.col,
-              })),
-              'aisle',
-            )
-          }}
-          onApplyRowAisle={() => {
-            if (!visibleSelected) return
-            applyCellTypes(
-              Array.from({ length: classroom.cols }, (_, col) => ({
-                row: visibleSelected.row,
-                col,
-              })),
-              'aisle',
-            )
-          }}
           onApplyType={(type) => {
             if (visibleSelected) {
               applyCellTypes([visibleSelected], type)

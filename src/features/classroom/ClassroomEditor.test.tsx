@@ -54,10 +54,10 @@ describe('ClassroomEditor', () => {
 
     expect(getCell(0, 0)).toHaveAttribute('aria-pressed', 'true')
 
-    await user.click(screen.getByRole('button', { name: '走道' }))
+    await user.click(screen.getByRole('button', { name: '禁坐' }))
 
     expect(useProjectStore.getState().project.classroom.cells[0].type).toBe(
-      'aisle',
+      'blocked',
     )
 
     await user.click(screen.getByRole('button', { name: '復原' }))
@@ -75,7 +75,7 @@ describe('ClassroomEditor', () => {
       </AppProviders>,
     )
 
-    await user.click(screen.getByRole('button', { name: '走道（3）' }))
+    await user.click(screen.getByRole('button', { name: '禁坐（5）' }))
 
     fireEvent.pointerDown(getCell(0, 0), {
       pointerType: 'mouse',
@@ -87,7 +87,9 @@ describe('ClassroomEditor', () => {
 
     const cells = useProjectStore.getState().project.classroom.cells
 
-    expect(cells.slice(0, 3).every((cell) => cell.type === 'aisle')).toBe(true)
+    expect(cells.slice(0, 3).every((cell) => cell.type === 'blocked')).toBe(
+      true,
+    )
     expect(useProjectStore.temporal.getState().pastStates).toHaveLength(1)
 
     await user.click(screen.getByRole('button', { name: '復原' }))
@@ -104,7 +106,7 @@ describe('ClassroomEditor', () => {
     const user = userEvent.setup()
     render(<ClassroomEditor />)
 
-    await user.click(screen.getByRole('button', { name: '矩形（6）' }))
+    await user.click(screen.getByRole('button', { name: '矩形（7）' }))
     await user.selectOptions(
       screen.getByRole('combobox', { name: '矩形填入型別' }),
       '禁坐',
@@ -129,22 +131,91 @@ describe('ClassroomEditor', () => {
     expect(cells[2].type).toBe('seat')
   })
 
-  it('可把整列與整欄設為走道', async () => {
+  it('橫向走道點一格會填滿整列並可一次復原', async () => {
     const user = userEvent.setup()
-    render(<ClassroomEditor />)
+    render(
+      <AppProviders>
+        <App />
+      </AppProviders>,
+    )
+
+    await user.click(screen.getByRole('button', { name: '橫向走道（3）' }))
 
     fireEvent.pointerDown(getCell(1, 1), {
       pointerType: 'mouse',
       button: 0,
     })
 
-    await user.click(screen.getByRole('button', { name: '整列走道' }))
-    await user.click(screen.getByRole('button', { name: '整欄走道' }))
+    const cells = useProjectStore.getState().project.classroom.cells
+
+    expect(cells.slice(6, 12).every((cell) => cell.type === 'aisle')).toBe(true)
+    expect(cells[0].type).toBe('seat')
+    expect(useProjectStore.temporal.getState().pastStates).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: '復原' }))
+
+    expect(
+      useProjectStore
+        .getState()
+        .project.classroom.cells.slice(6, 12)
+        .every((cell) => cell.type === 'seat'),
+    ).toBe(true)
+  })
+
+  it('縱向走道點一格會填滿整欄', async () => {
+    const user = userEvent.setup()
+    render(<ClassroomEditor />)
+
+    await user.click(screen.getByRole('button', { name: '縱向走道（4）' }))
+
+    fireEvent.pointerDown(getCell(1, 1), {
+      pointerType: 'mouse',
+      button: 0,
+    })
+
+    const cells = useProjectStore.getState().project.classroom.cells
+    const column = cells.filter((_, index) => index % 6 === 1)
+
+    expect(column.every((cell) => cell.type === 'aisle')).toBe(true)
+    expect(cells.filter((cell) => cell.type === 'aisle')).toHaveLength(5)
+  })
+
+  it('走道會把同列或同欄的禁坐一併轉為走道', async () => {
+    const user = userEvent.setup()
+
+    useProjectStore
+      .getState()
+      .applyCellTypes([{ row: 2, col: 2 }], 'blocked')
+    useProjectStore.temporal.getState().clear()
+
+    render(<ClassroomEditor />)
+
+    await user.click(screen.getByRole('button', { name: '橫向走道（3）' }))
+
+    fireEvent.pointerDown(getCell(2, 1), {
+      pointerType: 'mouse',
+      button: 0,
+    })
 
     const cells = useProjectStore.getState().project.classroom.cells
 
-    expect(cells.filter((cell) => cell.type === 'aisle')).toHaveLength(10)
-    expect(cells.filter((cell) => cell.type === 'seat')).toHaveLength(20)
+    expect(cells.slice(12, 18).every((cell) => cell.type === 'aisle')).toBe(
+      true,
+    )
+  })
+
+  it('走道工具會先預覽整列或整欄', async () => {
+    const user = userEvent.setup()
+    render(<ClassroomEditor />)
+
+    await user.click(screen.getByRole('button', { name: '縱向走道（4）' }))
+    fireEvent.pointerOver(getCell(4, 2))
+
+    expect(getCell(0, 2)).toHaveAccessibleName(/走道/)
+    expect(getCell(4, 2)).toHaveAccessibleName(/走道/)
+    expect(useProjectStore.getState().project.classroom.cells[2].type).toBe(
+      'seat',
+    )
   })
 
   it('可覆寫單一座位編號並清除', async () => {
@@ -250,10 +321,15 @@ describe('ClassroomEditor', () => {
 
     fireEvent.keyDown(grid, { key: '3' })
 
-    expect(screen.getByRole('button', { name: '走道（3）' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    expect(
+      screen.getByRole('button', { name: '橫向走道（3）' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.keyDown(grid, { key: '4' })
+
+    expect(
+      screen.getByRole('button', { name: '縱向走道（4）' }),
+    ).toHaveAttribute('aria-pressed', 'true')
 
     fireEvent.keyDown(grid, { key: 'ArrowRight' })
     fireEvent.keyDown(grid, { key: 'ArrowDown' })
@@ -292,6 +368,8 @@ describe('ClassroomEditor', () => {
     ).toBeVisible()
     expect(getGrid()).toHaveAttribute('tabindex', '-1')
     expect(getCell(0, 0)).toBeDisabled()
-    expect(screen.getByRole('button', { name: '走道（3）' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: '橫向走道（3）' }),
+    ).toBeDisabled()
   })
 })

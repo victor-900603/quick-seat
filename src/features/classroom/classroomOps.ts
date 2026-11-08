@@ -271,6 +271,20 @@ export function fillRect(
   )
 }
 
+export function positionsInRow(
+  classroom: Pick<Classroom, 'cols'>,
+  row: number,
+): CellPosition[] {
+  return Array.from({ length: classroom.cols }, (_, col) => ({ row, col }))
+}
+
+export function positionsInColumn(
+  classroom: Pick<Classroom, 'rows'>,
+  col: number,
+): CellPosition[] {
+  return Array.from({ length: classroom.rows }, (_, row) => ({ row, col }))
+}
+
 export function setRowType(
   classroom: Classroom,
   row: number,
@@ -280,11 +294,7 @@ export function setRowType(
     return classroom
   }
 
-  return setCellTypes(
-    classroom,
-    Array.from({ length: classroom.cols }, (_, col) => ({ row, col })),
-    type,
-  )
+  return setCellTypes(classroom, positionsInRow(classroom, row), type)
 }
 
 export function setColumnType(
@@ -296,11 +306,7 @@ export function setColumnType(
     return classroom
   }
 
-  return setCellTypes(
-    classroom,
-    Array.from({ length: classroom.rows }, (_, row) => ({ row, col })),
-    type,
-  )
+  return setCellTypes(classroom, positionsInColumn(classroom, col), type)
 }
 
 export function setCodeOverride(

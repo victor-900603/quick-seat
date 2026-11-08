@@ -11,8 +11,6 @@ interface PropertiesPanelProps {
   cellSize: number
   disabled: boolean
   onApplyType: (type: CellType) => void
-  onApplyRowAisle: () => void
-  onApplyColumnAisle: () => void
   onUpdateNumbering: (patch: {
     pattern?: string
     order?: 'row-major' | 'snake' | 'col-major'
@@ -138,8 +136,6 @@ export function PropertiesPanel({
   cellSize,
   disabled,
   onApplyType,
-  onApplyRowAisle,
-  onApplyColumnAisle,
   onUpdateNumbering,
   onUpdateCode,
   onResize,
@@ -269,24 +265,6 @@ export function PropertiesPanel({
               </div>
             </div>
 
-            <div className="flex gap-1.5">
-              <button
-                className="flex-1 border border-line bg-paper px-2 py-1.5 text-[11px] text-muted hover:border-accent/40 hover:text-ink disabled:opacity-40"
-                disabled={disabled}
-                onClick={onApplyRowAisle}
-                type="button"
-              >
-                整列走道
-              </button>
-              <button
-                className="flex-1 border border-line bg-paper px-2 py-1.5 text-[11px] text-muted hover:border-accent/40 hover:text-ink disabled:opacity-40"
-                disabled={disabled}
-                onClick={onApplyColumnAisle}
-                type="button"
-              >
-                整欄走道
-              </button>
-            </div>
           </div>
         ) : (
           <p className="text-xs leading-relaxed text-muted">
