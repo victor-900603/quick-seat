@@ -119,6 +119,58 @@ describe('App', () => {
     expect(screen.getByText('陳映彤')).toBeVisible()
   })
 
+  it('可從頁首重新命名專案', async () => {
+    const user = userEvent.setup()
+    renderApp()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: '重新命名專案，目前名稱：未命名教室',
+      }),
+    )
+
+    expect(
+      screen.getByRole('dialog', { name: '重新命名專案' }),
+    ).toBeInTheDocument()
+
+    const input = screen.getByRole('textbox', { name: '專案名稱' })
+
+    expect(input).toHaveValue('未命名教室')
+    expect(input).toHaveFocus()
+
+    await user.clear(input)
+    await user.type(input, '三年甲班')
+    await user.click(screen.getByRole('button', { name: '儲存名稱' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(useProjectStore.getState().project.name).toBe('三年甲班')
+    expect(
+      screen.getByRole('button', {
+        name: '重新命名專案，目前名稱：三年甲班',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('可按 Escape 取消重新命名專案', async () => {
+    const user = userEvent.setup()
+    renderApp()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: '重新命名專案，目前名稱：未命名教室',
+      }),
+    )
+
+    const input = screen.getByRole('textbox', { name: '專案名稱' })
+
+    await user.clear(input)
+    await user.type(input, '不會儲存')
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(useProjectStore.getState().project.name).toBe('未命名教室')
+  })
+
   it('手機唯讀時停用全域復原', async () => {
     vi.stubGlobal(
       'matchMedia',

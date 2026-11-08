@@ -1,7 +1,8 @@
 import * as Tabs from '@radix-ui/react-tabs'
-import { type ComponentType, useState } from 'react'
+import { type ComponentType, useCallback, useState } from 'react'
 import { StepIcon } from '../components/StepIcon'
 import { HistoryControls } from '../features/project/HistoryControls'
+import { ProjectNameDialog } from '../features/project/ProjectNameDialog'
 import { useAutosave, type SaveStatus } from '../features/project/useAutosave'
 import { useHistoryShortcuts } from '../features/project/useHistoryShortcuts'
 import { useProjectStore } from '../features/project/projectStore'
@@ -55,11 +56,15 @@ const SAVE_LABELS: Record<SaveStatus, string> = {
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('classroom')
+  const [renaming, setRenaming] = useState(false)
   const project = useProjectStore((state) => state.project)
+  const renameProject = useProjectStore((state) => state.renameProject)
   const saveStatus = useAutosave(project)
   const readOnly = useReadOnlyMode()
 
   useHistoryShortcuts({ disabled: readOnly })
+
+  const closeRename = useCallback(() => setRenaming(false), [])
 
   return (
     <Tabs.Root
@@ -82,12 +87,22 @@ function App() {
           </div>
 
           <div className="flex shrink-0 items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="font-mono text-[9px] tracking-[0.2em] text-chalk/45">
+            <button
+              aria-haspopup="dialog"
+              aria-label={`重新命名專案，目前名稱：${project.name}`}
+              className="group hidden text-right disabled:cursor-not-allowed disabled:opacity-60 sm:block"
+              disabled={readOnly}
+              onClick={() => setRenaming(true)}
+              title="重新命名專案"
+              type="button"
+            >
+              <span className="block font-mono text-[9px] tracking-[0.2em] text-chalk/45">
                 專案
-              </p>
-              <p className="text-xs text-chalk/85">{project.name}</p>
-            </div>
+              </span>
+              <span className="block border-b border-transparent text-xs text-chalk/85 transition-colors group-hover:border-chalk/40 group-hover:text-chalk">
+                {project.name}
+              </span>
+            </button>
             <HistoryControls disabled={readOnly} />
             <span
               className={`shrink-0 whitespace-nowrap border px-2.5 py-1 font-mono text-[9px] tracking-[0.15em] ${
@@ -143,6 +158,17 @@ function App() {
           <span>資料僅儲存在此瀏覽器</span>
         </div>
       </footer>
+
+      {renaming ? (
+        <ProjectNameDialog
+          name={project.name}
+          onClose={closeRename}
+          onSave={(name) => {
+            renameProject(name)
+            closeRename()
+          }}
+        />
+      ) : null}
     </Tabs.Root>
   )
 }
