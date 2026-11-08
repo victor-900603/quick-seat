@@ -17,6 +17,8 @@ interface ExportSettingsPanelProps {
   tagColumns: Array<{ id: string; name: string }>
   templateFields: TemplateField[]
   templateRef: RefObject<HTMLTextAreaElement | null>
+  unusedColumnCount: number
+  unusedRowCount: number
   onInsertToken: (token: string) => void
   onUpdateOptions: (patch: Partial<ExportContentOptions>) => void
 }
@@ -102,6 +104,8 @@ export function ExportSettingsPanel({
   tagColumns,
   templateFields,
   templateRef,
+  unusedColumnCount,
+  unusedRowCount,
   onInsertToken,
   onUpdateOptions,
 }: ExportSettingsPanelProps) {
@@ -344,6 +348,42 @@ export function ExportSettingsPanel({
             </div>
 
             <div className="border-t border-line pt-4">
+              <h4 className="text-xs font-medium text-ink">無座位軌道</h4>
+              <p className="mt-1 text-[10px] leading-4 text-muted">
+                整列或整欄沒有座位時，套用以下比例；只要有一個座位，該列或該欄就維持一般尺寸。設定同時套用至 Excel、HTML 與 PDF。
+              </p>
+              <div className="mt-3 space-y-3">
+                <RangeField
+                  id="export-unused-column-width"
+                  label="無座位欄寬"
+                  max={EXPORT_LAYOUT_LIMITS.unusedColumnWidth.max}
+                  min={EXPORT_LAYOUT_LIMITS.unusedColumnWidth.min}
+                  onChange={(value) =>
+                    onUpdateOptions({ unusedColumnWidth: value })
+                  }
+                  step={EXPORT_LAYOUT_LIMITS.unusedColumnWidth.step}
+                  unit="%"
+                  value={options.unusedColumnWidth}
+                />
+                <RangeField
+                  id="export-unused-row-height"
+                  label="無座位列高"
+                  max={EXPORT_LAYOUT_LIMITS.unusedRowHeight.max}
+                  min={EXPORT_LAYOUT_LIMITS.unusedRowHeight.min}
+                  onChange={(value) =>
+                    onUpdateOptions({ unusedRowHeight: value })
+                  }
+                  step={EXPORT_LAYOUT_LIMITS.unusedRowHeight.step}
+                  unit="%"
+                  value={options.unusedRowHeight}
+                />
+                <p className="text-[10px] leading-4 text-muted">
+                  目前套用：{unusedRowCount} 列、{unusedColumnCount} 欄。
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-line pt-4">
               <h4 className="text-xs font-medium text-ink">紙張與分頁</h4>
               <p className="mt-1 text-[10px] leading-4 text-muted">
                 邊界與每頁列數套用至 HTML 與 PDF。
@@ -461,6 +501,15 @@ export function ExportSettingsPanel({
                   label="未分配名單"
                   onChange={(checked) =>
                     onUpdateOptions({ showUnassigned: checked })
+                  }
+                />
+              </div>
+              <div className="mt-2">
+                <ToggleField
+                  checked={options.showAisleLabel}
+                  label="走道文字"
+                  onChange={(checked) =>
+                    onUpdateOptions({ showAisleLabel: checked })
                   }
                 />
               </div>

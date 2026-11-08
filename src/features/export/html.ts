@@ -8,6 +8,8 @@ import {
   getExportPageDimensions,
   getExportRowsPerPage,
   getExportSeatContent,
+  getExportTrackLayout,
+  type ExportTrackLayout,
 } from './exportData'
 
 export function escapeHtml(value: string): string {
@@ -25,7 +27,9 @@ function safeColor(value: string): string {
 
 function buildSeatCell(entry: ExportGridCell, options: ExportContentOptions) {
   if (entry.type === 'aisle') {
-    return '<div class="cell aisle"><span>走道</span></div>'
+    return `<div class="cell aisle">${
+      options.showAisleLabel ? '<span>走道</span>' : ''
+    }</div>`
   }
 
   if (entry.type === 'blocked') {
@@ -52,20 +56,27 @@ function buildSeatCell(entry: ExportGridCell, options: ExportContentOptions) {
 
 function buildSeatGrid(
   rows: ExportGridCell[][],
-  cols: number,
+  snapshot: ExportSnapshot,
   options: ExportContentOptions,
+  trackLayout: ExportTrackLayout,
+  rowOffset: number,
 ) {
   const wrapClass = options.htmlWrap ? '' : ' no-wrap'
+  const columnTemplate = trackLayout.columnWeights
+    .map((weight) => `minmax(0, ${weight}fr)`)
+    .join(' ')
   const rowsHtml = rows
-    .map(
-      (row) =>
-        `<div class="grid-row">${row
-          .map((entry) => buildSeatCell(entry, options))
-          .join('')}</div>`,
-    )
+    .map((row, index) => {
+      const rowHeight =
+        trackLayout.rowHeights[rowOffset + index] ?? options.htmlCellHeight
+
+      return `<div class="grid-row" style="--row-height:${rowHeight}px">${row
+        .map((entry) => buildSeatCell(entry, options))
+        .join('')}</div>`
+    })
     .join('')
 
-  return `<div class="seat-grid${wrapClass}" style="--cols:${cols}">${rowsHtml}</div>`
+  return `<div class="seat-grid${wrapClass}" style="--cols:${snapshot.cols};--grid-columns:${columnTemplate}">${rowsHtml}</div>`
 }
 
 function buildUnassigned(
@@ -170,7 +181,9 @@ function buildPageClass(options: ExportContentOptions) {
 function buildPage(
   snapshot: ExportSnapshot,
   options: ExportContentOptions,
+  trackLayout: ExportTrackLayout,
   rows: ExportGridCell[][],
+  rowOffset: number,
   pageIndex: number,
   pageCount: number,
   includeUnassigned = false,
@@ -182,7 +195,7 @@ function buildPage(
           options.showStage ? '<div class="stage">講 台</div>' : ''
         }`
       : ''
-  }${buildSeatGrid(rows, snapshot.cols, options)}${
+  }${buildSeatGrid(rows, snapshot, options, trackLayout, rowOffset)}${
     includeUnassigned ? buildUnassigned(snapshot, options) : ''
   }</div>${buildPageFooter(snapshot, options, pageIndex, pageCount)}</section>`
 }
@@ -218,18 +231,24 @@ export function buildHtmlDocument(
     options.showUnassigned && snapshot.unassigned.length > 0
   const pageCount = countExportPages(snapshot, options)
   const paper = getExportPageDimensions(options)
+  const trackLayout = getExportTrackLayout(snapshot, options)
+  let rowOffset = 0
   const pages = chunks
-    .map((rows, index) =>
-      buildPage(
+    .map((rows, index) => {
+      const page = buildPage(
         snapshot,
         options,
+        trackLayout,
         rows,
+        rowOffset,
         index,
         pageCount,
         false,
         index === 0 || options.repeatHeader,
-      ),
-    )
+      )
+      rowOffset += rows.length
+      return page
+    })
     .join('')
 
   const unassignedPage = hasUnassignedPage
@@ -304,8 +323,8 @@ h1 { margin: 4px 0 0; font-family: "Noto Serif TC", serif; font-size: 26px; lett
 .badge.warning { border-color: #d7a58e; color: var(--mark); background: #fbf0ea; }
 .stage { background: var(--board); color: var(--chalk); text-align: center; padding: 7px; font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .28em; margin-bottom: var(--cell-gap, 5px); }
 .seat-grid { display: flex; flex-direction: column; gap: var(--cell-gap, 5px); }
-.grid-row { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: var(--cell-gap, 5px); }
-.cell { height: var(--cell-height, 54px); border: var(--border-width, 1px) solid var(--line); padding: 5px 5px 4px; position: relative; overflow: hidden; }
+.grid-row { display: grid; grid-template-columns: var(--grid-columns, repeat(var(--cols), minmax(0, 1fr))); gap: var(--cell-gap, 5px); }
+.cell { height: var(--row-height, var(--cell-height, 54px)); border: var(--border-width, 1px) solid var(--line); padding: 5px 5px 4px; position: relative; overflow: hidden; }
 .cell.seat { background: var(--surface); display: flex; align-items: center; }
 .cell.seat.occupied { background: var(--accent-soft); border-color: #b7cdc2; }
 .cell.aisle { background: repeating-linear-gradient(135deg, #eeeade 0 5px, #e4dfd0 5px 6px); color: var(--muted); font-size: 9px; display: flex; align-items: center; justify-content: center; }
@@ -334,7 +353,7 @@ footer { margin-top: 22px; padding-top: 9px; border-top: 1px solid var(--line); 
   .page.has-margin::before { display: none; }
   .page { width: 100%; height: calc(var(--print-page-height, 190mm) - 1mm); border: 1px solid var(--line); padding: 6mm 8mm; overflow: hidden; break-after: page; page-break-after: always; }
   .page:last-child { break-after: auto; page-break-after: auto; }
-  .cell { height: var(--cell-height, 54px); }
+  .cell { height: var(--row-height, var(--cell-height, 54px)); }
   .unassigned-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 </style>

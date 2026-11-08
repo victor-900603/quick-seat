@@ -34,6 +34,19 @@ describe('workbook', () => {
     })
   })
 
+  it('可隱藏走道文字但保留走道底色', () => {
+    const snapshot = buildExportSnapshot(createExportFixture())
+    const sheet = buildWorkbookSheets(snapshot, {
+      ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+      showAisleLabel: false,
+    })[0]
+
+    expect(values(sheet)[4][1]).toBe('')
+    expect(sheet.data[4][1]).toMatchObject({
+      backgroundColor: '#e7e4d7',
+    })
+  })
+
   it('可依模板隱藏座位編號並靠左對齊', () => {
     const snapshot = buildExportSnapshot(createExportFixture())
     const sheet = buildWorkbookSheets(snapshot, {
@@ -59,6 +72,32 @@ describe('workbook', () => {
       height: 42,
       wrap: true,
     })
+  })
+
+  it('無座位列與欄使用較小的 Excel 列高與欄寬', () => {
+    const snapshot = buildExportSnapshot(createExportFixture())
+    const cols = snapshot.cols
+
+    snapshot.grid[1] = Array.from({ length: cols }, () => ({
+      type: 'aisle' as const,
+      seat: null,
+    }))
+    snapshot.grid = snapshot.grid.map((row) => {
+      const next = [...row]
+      next[cols - 1] = { type: 'empty', seat: null }
+      return next
+    })
+
+    const sheet = buildWorkbookSheets(snapshot, {
+      ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+      unusedColumnWidth: 50,
+      unusedRowHeight: 50,
+    })[0]
+
+    expect(sheet.data[3][0]).toMatchObject({ height: 42 })
+    expect(sheet.data[4][0]).toMatchObject({ height: 21 })
+    expect(sheet.columns?.[5]).toEqual({ width: 6.5 })
+    expect(sheet.columns?.[0]).toEqual({ width: 13 })
   })
 
   it('名單對照包含標籤欄位、座位與未分配狀態', () => {

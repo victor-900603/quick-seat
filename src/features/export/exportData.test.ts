@@ -7,6 +7,7 @@ import {
   getExportPageDimensions,
   getExportRowsPerPage,
   getExportSeatContent,
+  getExportTrackLayout,
   sanitizeFileNamePart,
 } from './exportData'
 
@@ -60,6 +61,41 @@ describe('exportData', () => {
       maxRows: 22,
       effectiveRows: 12,
     })
+  })
+
+  it('辨識整列與整欄都沒有座位的軌道', () => {
+    const snapshot = buildExportSnapshot(createExportFixture())
+    const cols = snapshot.cols
+
+    snapshot.grid[1] = Array.from({ length: cols }, () => ({
+      type: 'aisle' as const,
+      seat: null,
+    }))
+    snapshot.grid = snapshot.grid.map((row) => {
+      const next = [...row]
+      next[cols - 1] = { type: 'empty', seat: null }
+      return next
+    })
+
+    const layout = getExportTrackLayout(snapshot, {
+      ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+      unusedColumnWidth: 50,
+      unusedRowHeight: 50,
+    })
+
+    expect(layout.unusedRows).toEqual([false, true, false, false, false])
+    expect(layout.unusedColumns).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+    ])
+    expect(layout.rowHeights).toEqual([54, 27, 54, 54, 54])
+    expect(layout.columnWeights).toEqual([1, 1, 1, 1, 1, 0.5])
+    expect(layout.unusedRowCount).toBe(1)
+    expect(layout.unusedColumnCount).toBe(1)
   })
 
   it('建立座位、名單與未分配快照', () => {

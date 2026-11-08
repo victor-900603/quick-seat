@@ -14,6 +14,7 @@ import {
   EXPORT_TEMPLATE_FIELDS,
   formatGeneratedAt,
   getExportPageDimensions,
+  getExportTrackLayout,
   type ExportContentOptions,
 } from './exportData'
 import { downloadBlob, downloadText } from './download'
@@ -90,6 +91,7 @@ export function ExportEditor() {
   )
   const paper = getExportPageDimensions(options)
   const pageCount = countExportPages(snapshot, options)
+  const trackLayout = getExportTrackLayout(snapshot, options)
   const hasAssignment = Boolean(project.currentAssignment)
   const templateFields = useMemo(
     () => [
@@ -313,6 +315,8 @@ export function ExportEditor() {
           tagColumns={snapshot.tags}
           templateFields={templateFields}
           templateRef={templateRef}
+          unusedColumnCount={trackLayout.unusedColumnCount}
+          unusedRowCount={trackLayout.unusedRowCount}
         />
       </div>
 

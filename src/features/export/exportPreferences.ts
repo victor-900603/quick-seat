@@ -132,6 +132,10 @@ export function loadExportOptions(
       ),
       showNotes: readBoolean(parsed.showNotes, defaults.showNotes),
       showTags: readBoolean(parsed.showTags, defaults.showTags),
+      showAisleLabel: readBoolean(
+        parsed.showAisleLabel,
+        defaults.showAisleLabel,
+      ),
       cellGap: clampNumber(
         parsed.cellGap,
         defaults.cellGap,
@@ -143,6 +147,18 @@ export function loadExportOptions(
         defaults.borderWidth,
         EXPORT_LAYOUT_LIMITS.borderWidth.min,
         EXPORT_LAYOUT_LIMITS.borderWidth.max,
+      ),
+      unusedColumnWidth: clampNumber(
+        parsed.unusedColumnWidth,
+        defaults.unusedColumnWidth,
+        EXPORT_LAYOUT_LIMITS.unusedColumnWidth.min,
+        EXPORT_LAYOUT_LIMITS.unusedColumnWidth.max,
+      ),
+      unusedRowHeight: clampNumber(
+        parsed.unusedRowHeight,
+        defaults.unusedRowHeight,
+        EXPORT_LAYOUT_LIMITS.unusedRowHeight.min,
+        EXPORT_LAYOUT_LIMITS.unusedRowHeight.max,
       ),
       excelHiddenColumns: readHiddenColumns(parsed.excelHiddenColumns),
     }

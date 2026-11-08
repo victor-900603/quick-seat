@@ -73,12 +73,16 @@ describe('exportPreferences', () => {
         ...DEFAULT_EXPORT_CONTENT_OPTIONS,
         marginMm: 99,
         htmlFontSize: 1,
+        unusedColumnWidth: 1,
+        unusedRowHeight: 999,
       }),
     })
     const options = loadExportOptions(storage)
 
     expect(options.marginMm).toBe(20)
     expect(options.htmlFontSize).toBe(8)
+    expect(options.unusedColumnWidth).toBe(10)
+    expect(options.unusedRowHeight).toBe(100)
   })
 
   it('格式錯誤時回傳預設值', () => {

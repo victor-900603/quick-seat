@@ -41,6 +41,16 @@ describe('html export', () => {
     expect(dated).toMatch(/<footer>[\s\S]*2026-01-02[\s\S]*<\/footer>/)
   })
 
+  it('可隱藏走道文字但保留走道樣式', () => {
+    const html = buildHtmlDocument(buildExportSnapshot(createExportFixture()), {
+      ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+      showAisleLabel: false,
+    })
+
+    expect(html).toContain('class="cell aisle"')
+    expect(html).not.toContain('<span>走道</span>')
+  })
+
   it('可關閉統計，標題與統計都關閉時不輸出頁首', () => {
     const snapshot = buildExportSnapshot(createExportFixture())
     const noStats = buildHtmlDocument(snapshot, {
@@ -85,6 +95,36 @@ describe('html export', () => {
     expect(html).toContain('--cell-height:72px')
     expect(html).toContain('--font-size:13px')
     expect(html).toContain('seat-grid no-wrap')
+  })
+
+  it('無座位列與欄可套用較小的尺寸', () => {
+    const snapshot = buildExportSnapshot(createExportFixture())
+    const cols = snapshot.cols
+
+    snapshot.grid[1] = Array.from({ length: cols }, () => ({
+      type: 'aisle' as const,
+      seat: null,
+    }))
+    snapshot.grid = snapshot.grid.map((row) => {
+      const next = [...row]
+      next[cols - 1] = { type: 'empty', seat: null }
+      return next
+    })
+
+    const html = buildHtmlDocument(snapshot, {
+      ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+      unusedColumnWidth: 50,
+      unusedRowHeight: 50,
+    })
+
+    expect(html).toContain(
+      '--grid-columns:minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.5fr)',
+    )
+    expect(html).toContain('--row-height:27px')
+    expect(html).toContain('--row-height:54px')
+    expect(html).toContain(
+      'height: var(--row-height, var(--cell-height, 54px))',
+    )
   })
 
   it('列印時保留頁框與可列印高度', () => {

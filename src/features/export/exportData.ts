@@ -63,6 +63,8 @@ export const EXPORT_LAYOUT_LIMITS = {
   rowsPerPage: { min: 1, max: 30, step: 1 },
   cellGap: { min: 0, max: 8, step: 1 },
   borderWidth: { min: 0, max: 3, step: 1 },
+  unusedColumnWidth: { min: 10, max: 100, step: 5 },
+  unusedRowHeight: { min: 10, max: 100, step: 5 },
 } as const
 
 export interface ExportContentOptions {
@@ -86,8 +88,11 @@ export interface ExportContentOptions {
   showGeneratedAt: boolean
   showNotes: boolean
   showTags: boolean
+  showAisleLabel: boolean
   cellGap: number
   borderWidth: number
+  unusedColumnWidth: number
+  unusedRowHeight: number
   excelHiddenColumns: string[]
 }
 
@@ -186,6 +191,56 @@ export function getExportRowsPerPage(
   }
 }
 
+export interface ExportTrackLayout {
+  unusedRows: boolean[]
+  unusedColumns: boolean[]
+  rowHeights: number[]
+  columnWeights: number[]
+  unusedRowCount: number
+  unusedColumnCount: number
+}
+
+export function getExportTrackLayout(
+  snapshot: Pick<ExportSnapshot, 'grid' | 'cols'>,
+  options: Pick<
+    ExportContentOptions,
+    'htmlCellHeight' | 'unusedColumnWidth' | 'unusedRowHeight'
+  >,
+): ExportTrackLayout {
+  const columnCount = Math.max(snapshot.cols, 1)
+  const unusedRows = snapshot.grid.map(
+    (row) => row.length > 0 && row.every((cell) => cell.type !== 'seat'),
+  )
+  const unusedColumns = Array.from({ length: columnCount }, (_, col) => {
+    const cells = snapshot.grid.map((row) => row[col])
+
+    return (
+      cells.length > 0 &&
+      cells.every((cell) => cell !== undefined && cell.type !== 'seat')
+    )
+  })
+  const rowHeights = unusedRows.map((unused) =>
+    Math.round(
+      (options.htmlCellHeight * (unused ? options.unusedRowHeight : 100)) /
+        100,
+    ),
+  )
+  const columnWeights = unusedColumns.map((unused) =>
+    Math.round(
+      ((unused ? options.unusedColumnWidth : 100) / 100) * 100,
+    ) / 100,
+  )
+
+  return {
+    unusedRows,
+    unusedColumns,
+    rowHeights,
+    columnWeights,
+    unusedRowCount: unusedRows.filter(Boolean).length,
+    unusedColumnCount: unusedColumns.filter(Boolean).length,
+  }
+}
+
 export const DEFAULT_EXPORT_TEMPLATE = '{seatCode}\n{name}\n{studentNo}'
 export const DEFAULT_EXPORT_CONTENT_OPTIONS: ExportContentOptions = {
   template: DEFAULT_EXPORT_TEMPLATE,
@@ -208,8 +263,11 @@ export const DEFAULT_EXPORT_CONTENT_OPTIONS: ExportContentOptions = {
   showGeneratedAt: false,
   showNotes: true,
   showTags: true,
+  showAisleLabel: true,
   cellGap: 5,
   borderWidth: 1,
+  unusedColumnWidth: 100,
+  unusedRowHeight: 100,
   excelHiddenColumns: [],
 }
 

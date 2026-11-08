@@ -82,6 +82,29 @@ describe('ExportEditor', () => {
     expect(tags).toBeEnabled()
   })
 
+  it('可隱藏走道文字並套用到 HTML 與 Excel', async () => {
+    const user = userEvent.setup()
+    render(<ExportEditor />)
+
+    await user.click(screen.getByRole('tab', { name: '顯示' }))
+    await user.click(screen.getByLabelText('走道文字'))
+
+    await user.click(screen.getByRole('button', { name: '下載 HTML' }))
+    const html = downloadTextMock.mock.calls[0][0]
+
+    expect(html).toContain('class="cell aisle"')
+    expect(html).not.toContain('<span>走道</span>')
+
+    await user.click(screen.getByRole('button', { name: '下載 Excel' }))
+
+    await waitFor(() => {
+      expect(workbookMock).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ showAisleLabel: false }),
+      )
+    })
+  })
+
   it('可下載 Excel 座位表並顯示成功提示', async () => {
     const user = userEvent.setup()
     render(<ExportEditor />)
@@ -168,6 +191,53 @@ describe('ExportEditor', () => {
           htmlCellHeight: 72,
           htmlFontSize: 13,
           htmlWrap: false,
+        }),
+      )
+    })
+  })
+
+  it('可設定無座位列高與欄寬並套用到輸出', async () => {
+    const project = createExportFixture()
+    const { cols, rows } = project.classroom
+
+    for (let col = 0; col < cols; col += 1) {
+      project.classroom.cells[cols + col] = { type: 'aisle' }
+    }
+
+    for (let row = 0; row < rows; row += 1) {
+      project.classroom.cells[row * cols + cols - 1] = { type: 'empty' }
+    }
+
+    prepareProject(project)
+    const user = userEvent.setup()
+    render(<ExportEditor />)
+
+    await user.click(screen.getByRole('tab', { name: '版面' }))
+    expect(screen.getByText('目前套用：1 列、1 欄。')).toBeVisible()
+
+    fireEvent.change(screen.getByLabelText('無座位欄寬'), {
+      target: { value: '50' },
+    })
+    fireEvent.change(screen.getByLabelText('無座位列高'), {
+      target: { value: '50' },
+    })
+
+    await user.click(screen.getByRole('button', { name: '下載 HTML' }))
+    const html = downloadTextMock.mock.calls[0][0]
+
+    expect(html).toContain(
+      '--grid-columns:minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.5fr)',
+    )
+    expect(html).toContain('--row-height:27px')
+
+    await user.click(screen.getByRole('button', { name: '下載 Excel' }))
+
+    await waitFor(() => {
+      expect(workbookMock).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          unusedColumnWidth: 50,
+          unusedRowHeight: 50,
         }),
       )
     })

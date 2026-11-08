@@ -9,6 +9,7 @@ import {
   DEFAULT_EXPORT_CONTENT_OPTIONS,
   formatGeneratedAt,
   getExportSeatContent,
+  getExportTrackLayout,
 } from './exportData'
 
 const COLORS = {
@@ -48,15 +49,16 @@ function cell(
 function seatCell(
   entry: ExportGridCell,
   options: ExportContentOptions,
+  rowHeight: number,
 ): Cell {
   if (entry.type === 'aisle') {
-    return cell('走道', {
+    return cell(options.showAisleLabel ? '走道' : '', {
       ...BORDER,
       align: 'center',
       backgroundColor: COLORS.aisle,
       textColor: COLORS.muted,
       fontSize: EXCEL_FONT_SIZE,
-      height: EXCEL_ROW_HEIGHT,
+      height: rowHeight,
     })
   }
 
@@ -64,7 +66,7 @@ function seatCell(
     return cell('', {
       ...BORDER,
       backgroundColor: COLORS.blocked,
-      height: EXCEL_ROW_HEIGHT,
+      height: rowHeight,
     })
   }
 
@@ -72,7 +74,7 @@ function seatCell(
     return cell('', {
       ...BORDER,
       backgroundColor: COLORS.paper,
-      height: EXCEL_ROW_HEIGHT,
+      height: rowHeight,
     })
   }
 
@@ -87,7 +89,7 @@ function seatCell(
     backgroundColor: seat?.person ? COLORS.accentSoft : COLORS.surface,
     textColor: COLORS.ink,
     fontSize: EXCEL_FONT_SIZE,
-    height: EXCEL_ROW_HEIGHT,
+    height: rowHeight,
   })
 }
 
@@ -98,6 +100,7 @@ function buildSeatSheet(
   const data: Cell[][] = []
   const width = Math.max(snapshot.cols, 1)
   const stamp = formatGeneratedAt(snapshot.generatedAt)
+  const trackLayout = getExportTrackLayout(snapshot, options)
 
   data.push([
     cell(`${snapshot.projectName} 座位表`, {
@@ -133,8 +136,17 @@ function buildSeatSheet(
     }),
   ])
 
-  for (const line of snapshot.grid) {
-    data.push(line.map((entry) => seatCell(entry, options)))
+  for (const [rowIndex, line] of snapshot.grid.entries()) {
+    const rowHeight = Math.max(
+      6,
+      Math.round(
+        (EXCEL_ROW_HEIGHT *
+          (trackLayout.unusedRows[rowIndex] ? options.unusedRowHeight : 100)) /
+          100,
+      ),
+    )
+
+    data.push(line.map((entry) => seatCell(entry, options, rowHeight)))
   }
 
   data.push([])
@@ -177,8 +189,15 @@ function buildSeatSheet(
     data,
     sheet: '座位表',
     showGridLines: false,
-    columns: Array.from({ length: width }, () => ({
-      width: EXCEL_COLUMN_WIDTH,
+    columns: Array.from({ length: width }, (_, index) => ({
+      width: Math.max(
+        2,
+        Math.round(
+          EXCEL_COLUMN_WIDTH *
+            (trackLayout.columnWeights[index] ?? 1) *
+            10,
+        ) / 10,
+      ),
     })),
   }
 }
