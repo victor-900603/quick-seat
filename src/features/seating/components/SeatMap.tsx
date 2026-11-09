@@ -11,6 +11,7 @@ interface SeatMapProps {
   refsById: Map<string, SeatRef>
   activeSeatIds: Set<string>
   assignments: Record<string, string>
+  violationSeatIds: Set<string>
   personsById: Map<string, Person>
   lockedPersonIds: Set<string>
   display: ProjectSettings['display']
@@ -30,6 +31,7 @@ interface SeatCellProps {
   person: Person | null
   active: boolean
   locked: boolean
+  violating: boolean
   display: ProjectSettings['display']
   selected: boolean
   readOnly: boolean
@@ -45,6 +47,7 @@ function SeatCell({
   person,
   active,
   locked,
+  violating,
   display,
   selected,
   readOnly,
@@ -83,9 +86,13 @@ function SeatCell({
     <button
       aria-label={`座位 ${code}，${person ? label || '已安排人員' : active ? '空位' : '未使用'}${
         locked ? '，已鎖定' : ''
-      }`}
+      }${violating ? '，有規則衝突' : ''}`}
       aria-pressed={selected}
       className={`relative flex items-center justify-center overflow-hidden border px-1 text-center transition-[background-color,border-color,box-shadow] ${className} ${
+        violating
+          ? 'border-mark/70 shadow-[inset_0_0_0_1px_rgba(184,80,47,0.32)]'
+          : ''
+      } ${
         droppable.isOver
           ? 'z-10 border-accent bg-accent-soft ring-2 ring-accent ring-inset'
           : ''
@@ -133,6 +140,16 @@ function SeatCell({
         />
       ) : null}
 
+      {violating ? (
+        <span
+          aria-hidden="true"
+          className="absolute bottom-1 right-1 flex h-3 w-3 items-center justify-center rounded-full bg-mark font-mono text-[7px] leading-none text-chalk"
+          title="有規則衝突"
+        >
+          !
+        </span>
+      ) : null}
+
       <span className="sr-only">
         {formatSeatPosition(row, col)}
         {active ? '，可用座位' : '，未使用座位'}
@@ -146,6 +163,7 @@ export function SeatMap({
   refsById,
   activeSeatIds,
   assignments,
+  violationSeatIds,
   personsById,
   lockedPersonIds,
   display,
@@ -242,6 +260,7 @@ export function SeatMap({
                   readOnly={readOnly}
                   row={row}
                   selected={selectedSeatId === id}
+                  violating={violationSeatIds.has(id)}
                 />
               )
             })}

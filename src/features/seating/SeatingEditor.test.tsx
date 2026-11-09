@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDefaultProject } from '../project/defaultProject'
 import { useProjectStore } from '../project/projectStore'
+import { createRule } from '../rules/ruleOps'
 import { SeatingEditor } from './SeatingEditor'
 
 function resetStore() {
@@ -523,5 +524,48 @@ describe('SeatingEditor', () => {
     expect(
       screen.getByRole('button', { name: '開始排座' }),
     ).toBeDisabled()
+  })
+
+  it('顯示規則衝突並可點擊定位座位', async () => {
+    const user = userEvent.setup()
+    const store = useProjectStore.getState()
+    const tagId = store.addTag({
+      name: '分組',
+      type: 'enum',
+      options: ['A'],
+    })!
+    const firstId = store.addPerson({ name: '林品妤', studentNo: '01' })!
+    const secondId = useProjectStore.getState().addPerson({
+      name: '陳柏宇',
+      studentNo: '02',
+    })!
+    useProjectStore.getState().setPersonsTag(
+      [firstId, secondId],
+      tagId,
+      'A',
+    )
+
+    render(<SeatingEditor />)
+    await user.click(screen.getByRole('button', { name: '開始排座' }))
+
+    act(() => {
+      useProjectStore.getState().addRule({
+        ...createRule('separate', { tagId }),
+        id: 'rule-separate',
+        adjacency: 'orthogonal',
+        values: ['A'],
+      })
+    })
+
+    expect(screen.getByText('規則衝突')).toBeVisible()
+    expect(screen.getByText('衝突 1')).toBeVisible()
+    const violation = screen.getByRole('button', {
+      name: /在座位 01 與 02 相鄰/,
+    })
+    expect(violation).toBeVisible()
+    expect(seatButton('01')).toHaveAccessibleName(/有規則衝突/)
+
+    await user.click(violation)
+    expect(seatButton('01')).toHaveAttribute('aria-pressed', 'true')
   })
 })

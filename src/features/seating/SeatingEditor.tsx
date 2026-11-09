@@ -26,6 +26,8 @@ import {
 import { buildOccupancySummary } from './occupancy'
 import { isAssignmentStale } from './revision'
 import { seatCollisionDetection, cursorOffsetModifier } from './seatingDnd'
+import { evaluateAssignment } from '../rules/evaluateRules'
+import { RuleViolationsPanel } from '../rules/components/RuleViolationsPanel'
 import { SeatDetails } from './components/SeatDetails'
 import { SeatMap } from './components/SeatMap'
 import {
@@ -134,6 +136,23 @@ export function SeatingEditor() {
   const personsById = useMemo(
     () => new Map(persons.map((person) => [person.id, person])),
     [persons],
+  )
+  const seatCodes = useMemo(
+    () => new Map(refs.map((ref) => [ref.id, ref.code])),
+    [refs],
+  )
+  const evaluation = useMemo(
+    () =>
+      assignment ? evaluateAssignment(project, assignment) : null,
+    [assignment, project],
+  )
+  const violationSeatIds = useMemo(
+    () =>
+      new Set(
+        evaluation?.violations.flatMap((violation) => violation.seatIds) ??
+          [],
+      ),
+    [evaluation],
   )
   const pinSeatIds = useMemo(
     () =>
@@ -346,6 +365,11 @@ export function SeatingEditor() {
     setSelectedSeatId(null)
     setSelectedPersonId(null)
   }, [])
+
+  const selectViolationSeat = (seatId: string) => {
+    setSelectedSeatId(seatId)
+    setSelectedPersonId(null)
+  }
 
   const handleMapBackgroundClick = (event: MouseEvent<HTMLDivElement>) => {
     const target = event.target
@@ -623,6 +647,7 @@ export function SeatingEditor() {
                   refsById={refsById}
                   selectedPersonId={selectedPersonId}
                   selectedSeatId={selectedSeatId}
+                  violationSeatIds={violationSeatIds}
                 />
               </div>
 
@@ -674,6 +699,12 @@ export function SeatingEditor() {
               onSeedChange={setSeed}
               readOnly={readOnly}
               seed={seed}
+            />
+
+            <RuleViolationsPanel
+              evaluation={evaluation}
+              onSelectSeat={selectViolationSeat}
+              seatCodes={seatCodes}
             />
 
             <SeatDetails
