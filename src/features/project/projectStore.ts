@@ -6,6 +6,7 @@ import { temporal } from 'zundo'
 import type {
   AssignmentResult,
   CellType,
+  Classroom,
   PinRule,
   Project,
   ProjectSettings,
@@ -81,6 +82,7 @@ export interface ProjectStore {
   project: Project
   renameProject: (name: string) => void
   applyCellTypes: (positions: CellPosition[], type: CellType) => void
+  replaceClassroom: (classroom: Classroom) => void
   resizeRoom: (cols: number, rows: number) => void
   updateSeatNumbering: (patch: Partial<SeatNumbering>) => void
   updateSeatCode: (seat: CellPosition, code: string) => void
@@ -259,6 +261,14 @@ function prunePinRules(project: Project): void {
   )
 }
 
+function applyClassroomChange(project: Project, classroom: Classroom): void {
+  project.classroom = classroom
+  pruneAssignmentSeats(project)
+  prunePinRules(project)
+  refreshAssignmentEvaluation(project)
+  touch(project)
+}
+
 export const useProjectStore = create<ProjectStore>()(
   temporal(
     immer<ProjectStore>((set, get) => ({
@@ -285,11 +295,17 @@ export const useProjectStore = create<ProjectStore>()(
             return
           }
 
-          state.project.classroom = next
-          pruneAssignmentSeats(state.project)
-          prunePinRules(state.project)
-          refreshAssignmentEvaluation(state.project)
-          touch(state.project)
+          applyClassroomChange(state.project, next)
+        })
+      },
+
+      replaceClassroom: (classroom) => {
+        set((state) => {
+          if (classroom === state.project.classroom) {
+            return
+          }
+
+          applyClassroomChange(state.project, classroom)
         })
       },
 
@@ -301,11 +317,7 @@ export const useProjectStore = create<ProjectStore>()(
             return
           }
 
-          state.project.classroom = next
-          pruneAssignmentSeats(state.project)
-          prunePinRules(state.project)
-          refreshAssignmentEvaluation(state.project)
-          touch(state.project)
+          applyClassroomChange(state.project, next)
         })
       },
 

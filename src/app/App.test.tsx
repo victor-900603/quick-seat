@@ -14,8 +14,13 @@ import {
   it,
   vi,
 } from 'vitest'
+import { createClassroom } from '../features/classroom/classroomOps'
 import { createDefaultProject } from '../features/project/defaultProject'
 import { useProjectStore } from '../features/project/projectStore'
+import {
+  clearClassroomShareHash,
+  createClassroomShareUrl,
+} from '../features/share/classroomShare'
 import App from './App'
 import { AppProviders } from './providers'
 
@@ -47,7 +52,10 @@ function addPerson(name: string, studentNo: string) {
 }
 
 describe('App', () => {
-  beforeEach(resetStore)
+  beforeEach(() => {
+    resetStore()
+    clearClassroomShareHash()
+  })
 
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -169,6 +177,29 @@ describe('App', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(useProjectStore.getState().project.name).toBe('未命名教室')
+  })
+
+  it('可從分享連結預覽並套用教室', async () => {
+    const user = userEvent.setup()
+    const shared = createClassroom({ cols: 3, rows: 2 })
+    shared.cells[0] = { type: 'aisle' }
+    const shareUrl = createClassroomShareUrl(shared, window.location.href)
+    window.location.hash = new URL(shareUrl).hash
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    renderApp()
+
+    expect(
+      await screen.findByRole('dialog', { name: '分享的教室' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '套用到目前教室' }))
+
+    const project = useProjectStore.getState().project
+    expect(project.classroom.cols).toBe(3)
+    expect(project.classroom.rows).toBe(2)
+    expect(project.classroom.cells[0].type).toBe('aisle')
+    expect(window.location.hash).toBe('')
   })
 
   it('手機唯讀時停用全域復原', async () => {

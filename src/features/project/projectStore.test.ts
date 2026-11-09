@@ -4,6 +4,7 @@ import {
   buildImportPlan,
   parseTextTable,
 } from '../roster/importRoster'
+import { createClassroom } from '../classroom/classroomOps'
 import { createTagDef } from '../roster/rosterOps'
 import { createRule } from '../rules/ruleOps'
 import { createDefaultProject } from './defaultProject'
@@ -65,6 +66,50 @@ describe('projectStore', () => {
     expect(classroom.cols).toBe(8)
     expect(classroom.rows).toBe(7)
     expect(classroom.cells).toHaveLength(56)
+  })
+
+  it('取代教室配置並保留單一步復原', () => {
+    const original = useProjectStore.getState().project.classroom
+    const next = createClassroom({ cols: 4, rows: 3 })
+    next.cells[0] = { type: 'blocked' }
+
+    useProjectStore.getState().replaceClassroom(next)
+
+    expect(useProjectStore.getState().project.classroom).toBe(next)
+    expect(history().pastStates).toHaveLength(1)
+
+    history().undo()
+    expect(useProjectStore.getState().project.classroom).toBe(original)
+  })
+
+  it('套用新教室時清除失效座位分配與固定規則', () => {
+    const store = useProjectStore.getState()
+    const personId = store.addPerson({ name: '林品妤' })!
+    store.addRule(
+      createRule('pin', {
+        personId,
+        seatId: 'r0c0',
+      }),
+    )
+    useProjectStore.getState().runSeating({
+      occupancy: { kind: 'full' },
+      allocation: { kind: 'ordered', orderBy: 'import', fill: 'row-major' },
+      seed: 'share-room',
+      partial: false,
+    })
+
+    expect(
+      useProjectStore.getState().project.currentAssignment?.assignments.r0c0,
+    ).toBe(personId)
+
+    const next = createClassroom({ cols: 2, rows: 2 })
+    next.cells[0] = { type: 'blocked' }
+    useProjectStore.getState().replaceClassroom(next)
+
+    const project = useProjectStore.getState().project
+    expect(project.currentAssignment?.assignments).toEqual({})
+    expect(project.currentAssignment?.unassignedPersonIds).toEqual([personId])
+    expect(project.rules).toEqual([])
   })
 
   it('更新座位編號與單一覆寫', () => {

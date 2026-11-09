@@ -1,5 +1,5 @@
 import * as Tabs from '@radix-ui/react-tabs'
-import { type ComponentType, useCallback, useState } from 'react'
+import { type ComponentType, useCallback, useEffect, useState } from 'react'
 import { StepIcon } from '../components/StepIcon'
 import { HistoryControls } from '../features/project/HistoryControls'
 import { ProjectNameDialog } from '../features/project/ProjectNameDialog'
@@ -7,6 +7,12 @@ import { useAutosave, type SaveStatus } from '../features/project/useAutosave'
 import { useHistoryShortcuts } from '../features/project/useHistoryShortcuts'
 import { useProjectStore } from '../features/project/projectStore'
 import { useReadOnlyMode } from '../lib/useReadOnlyMode'
+import {
+  clearClassroomShareHash,
+  readClassroomShareHash,
+  type ClassroomShareState,
+} from '../features/share/classroomShare'
+import { SharedClassroomPreview } from '../features/share/components/SharedClassroomPreview'
 import { ExportPage } from '../pages/ExportPage'
 import { LayoutPage } from '../pages/LayoutPage'
 import { RosterPage } from '../pages/RosterPage'
@@ -57,14 +63,53 @@ const SAVE_LABELS: Record<SaveStatus, string> = {
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('classroom')
   const [renaming, setRenaming] = useState(false)
+  const [sharedClassroom, setSharedClassroom] =
+    useState<ClassroomShareState | null>(() =>
+      readClassroomShareHash(window.location.hash),
+    )
   const project = useProjectStore((state) => state.project)
   const renameProject = useProjectStore((state) => state.renameProject)
+  const replaceClassroom = useProjectStore((state) => state.replaceClassroom)
   const saveStatus = useAutosave(project)
   const readOnly = useReadOnlyMode()
 
   useHistoryShortcuts({ disabled: readOnly })
 
+  useEffect(() => {
+    const syncShare = () => {
+      setSharedClassroom(readClassroomShareHash(window.location.hash))
+    }
+
+    window.addEventListener('hashchange', syncShare)
+    return () => window.removeEventListener('hashchange', syncShare)
+  }, [])
+
   const closeRename = useCallback(() => setRenaming(false), [])
+  const closeSharedClassroom = useCallback(() => {
+    clearClassroomShareHash()
+    setSharedClassroom(null)
+  }, [])
+  const applySharedClassroom = useCallback(
+    (classroom: Parameters<typeof replaceClassroom>[0]) => {
+      if (readOnly) {
+        return
+      }
+
+      if (
+        !window.confirm(
+          '套用後會取代目前的教室配置，名單、規則與排座結果可能受影響。確定套用嗎？',
+        )
+      ) {
+        return
+      }
+
+      replaceClassroom(classroom)
+      clearClassroomShareHash()
+      setSharedClassroom(null)
+      setActiveTab('classroom')
+    },
+    [readOnly, replaceClassroom],
+  )
 
   return (
     <Tabs.Root
@@ -167,6 +212,15 @@ function App() {
             renameProject(name)
             closeRename()
           }}
+        />
+      ) : null}
+
+      {sharedClassroom ? (
+        <SharedClassroomPreview
+          onApply={applySharedClassroom}
+          onClose={closeSharedClassroom}
+          readOnly={readOnly}
+          state={sharedClassroom}
         />
       ) : null}
     </Tabs.Root>
