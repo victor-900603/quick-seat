@@ -17,6 +17,13 @@ export interface SeatingOptimizerOptions {
   restarts?: number
 }
 
+export interface SeatingOptimizationProgress {
+  iteration: number
+  maxIterations: number
+  restart: number
+  restarts: number
+}
+
 export interface OptimizeSeatingInput {
   project: Project
   assignments: Record<string, string>
@@ -25,6 +32,7 @@ export interface OptimizeSeatingInput {
   unassignedPersonIds: string[]
   seed: string
   options?: SeatingOptimizerOptions
+  onProgress?: (progress: SeatingOptimizationProgress) => void
 }
 
 export interface SeatingOptimization {
@@ -40,12 +48,14 @@ interface Score {
   cost: number
 }
 
-const DEFAULT_TIME_LIMIT_MS = 2000
+export const DEFAULT_OPTIMIZER_TIME_LIMIT_MS = 10000
+const DEFAULT_TIME_LIMIT_MS = DEFAULT_OPTIMIZER_TIME_LIMIT_MS
 const DEFAULT_INITIAL_TEMPERATURE = 2
 const DEFAULT_FINAL_TEMPERATURE = 0.01
 const DEFAULT_COOLING_RATE = 0.9995
 const DEFAULT_RESTARTS = 3
 const TIME_CHECK_INTERVAL = 32
+const PROGRESS_INTERVAL_MS = 100
 
 function scoreAssignment(
   project: Project,
@@ -129,11 +139,30 @@ export function optimizeSeatingAssignments(
     1,
     Math.floor(maxIterations / restarts),
   )
+  let lastProgressAt = Number.NEGATIVE_INFINITY
+
+  const reportProgress = (restart: number) => {
+    const now = performance.now()
+
+    if (now - lastProgressAt < PROGRESS_INTERVAL_MS) {
+      return
+    }
+
+    lastProgressAt = now
+    input.onProgress?.({
+      iteration: iterations,
+      maxIterations,
+      restart,
+      restarts,
+    })
+  }
 
   for (let restart = 0; restart < restarts; restart += 1) {
     currentAssignments = bestAssignments
     currentScore = bestScore
     let temperature = initialTemperature
+
+    reportProgress(restart + 1)
 
     for (
       let restartStep = 0;
@@ -145,6 +174,8 @@ export function optimizeSeatingAssignments(
       }
 
       if (iterations % TIME_CHECK_INTERVAL === 0) {
+        reportProgress(restart + 1)
+
         if (performance.now() - startedAt >= timeLimitMs) {
           timedOut = true
           break
@@ -232,6 +263,13 @@ export function optimizeSeatingAssignments(
       break
     }
   }
+
+  input.onProgress?.({
+    iteration: iterations,
+    maxIterations,
+    restart: restarts,
+    restarts,
+  })
 
   return {
     assignments: bestAssignments,

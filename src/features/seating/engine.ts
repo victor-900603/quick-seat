@@ -19,6 +19,7 @@ import { parseSeatId } from '../classroom/numbering'
 import { applyRuleEvaluation } from '../rules/evaluateRules'
 import {
   optimizeSeatingAssignments,
+  type SeatingOptimizationProgress,
   type SeatingOptimizerOptions,
 } from './optimizer'
 
@@ -209,6 +210,7 @@ export function buildManualAssignment(
 export function buildSeatingResult(
   project: Project,
   config: SeatingConfig,
+  onProgress?: (progress: SeatingOptimizationProgress) => void,
 ): SeatingOutcome {
   const persons = project.roster.persons
   const personCount = persons.length
@@ -402,6 +404,7 @@ export function buildSeatingResult(
           .map((person) => person.id),
         seed: effectiveSeed,
         options: config.optimizer,
+        onProgress,
       })
     : null
   const finalAssignments = optimization?.assignments ?? assignments

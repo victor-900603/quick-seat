@@ -3,7 +3,10 @@ import type { Person, Project, TagDef } from '../../types/domain'
 import { createDefaultProject } from '../project/defaultProject'
 import { evaluateAssignment } from '../rules/evaluateRules'
 import { createRule } from '../rules/ruleOps'
-import { optimizeSeatingAssignments } from './optimizer'
+import {
+  DEFAULT_OPTIMIZER_TIME_LIMIT_MS,
+  optimizeSeatingAssignments,
+} from './optimizer'
 
 const GROUP_TAG: TagDef = {
   id: 'tag-group',
@@ -44,6 +47,10 @@ function createProject(): Project {
 const ACTIVE_SEATS = ['r0c0', 'r0c1', 'r0c2', 'r1c0', 'r1c1', 'r1c2']
 
 describe('seating optimizer', () => {
+  it('預設時間上限為 10 秒', () => {
+    expect(DEFAULT_OPTIMIZER_TIME_LIMIT_MS).toBe(10000)
+  })
+
   it('可透過換位降低分開規則的硬衝突', () => {
     const project = createProject()
     const rule = createRule('separate', {
@@ -170,6 +177,51 @@ describe('seating optimizer', () => {
     expect(new Set(Object.values(result.assignments))).toEqual(
       new Set(['person-1', 'person-2']),
     )
+  })
+
+  it('最佳化過程會回報進度', () => {
+    const project = createProject()
+    project.rules = [
+      createRule('separate', {
+        tagId: GROUP_TAG.id,
+        adjacency: 'all8',
+      }),
+    ]
+    const progress: Array<{
+      iteration: number
+      maxIterations: number
+      restart: number
+      restarts: number
+    }> = []
+
+    optimizeSeatingAssignments({
+      project,
+      assignments: {
+        r0c0: 'person-1',
+        r0c1: 'person-2',
+        r0c2: 'person-3',
+        r1c0: 'person-4',
+      },
+      activeSeatIds: ACTIVE_SEATS,
+      fixedPersonIds: [],
+      unassignedPersonIds: [],
+      seed: 'progress',
+      options: {
+        maxIterations: 2000,
+        timeLimitMs: 5000,
+      },
+      onProgress: (next) => progress.push(next),
+    })
+
+    expect(progress.length).toBeGreaterThan(0)
+    expect(progress[0]).toMatchObject({
+      iteration: 0,
+      maxIterations: 2000,
+      restart: 1,
+      restarts: 3,
+    })
+    expect(progress.at(-1)?.iteration).toBeGreaterThan(0)
+    expect(progress.every((item) => item.maxIterations === 2000)).toBe(true)
   })
 
   it('達到時間上限時回傳標記與目前最佳結果', () => {
