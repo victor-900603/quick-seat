@@ -4,6 +4,7 @@ import { createClassroom, setCellTypes } from '../classroom/classroomOps'
 import { createDefaultProject } from '../project/defaultProject'
 import { buildSeatingResult, type SeatingConfig } from './engine'
 import { findPersonSeat } from './seatingOps'
+import { createRule } from '../rules/ruleOps'
 
 function person(id: string, name: string, studentNo: string): Person {
   return {
@@ -250,6 +251,47 @@ describe('seating engine', () => {
       expect(outcome.result.assignments.r0c0).toBe('p7')
       expect(outcome.result.unassignedPersonIds).toHaveLength(1)
       expect(outcome.result.unassignedPersonIds).not.toContain('p7')
+    }
+  })
+
+  it('自動排座會依規則最佳化，並保留固定人員', () => {
+    const project = projectWith(4)
+    project.classroom = createClassroom({ cols: 3, rows: 2 })
+    project.roster.tags = [
+      {
+        id: 'tag-group',
+        name: '分組',
+        type: 'enum',
+        options: ['A', 'B'],
+        color: '#2f6b58',
+      },
+    ]
+    project.roster.persons = [
+      { ...person('p1', '學生 1', '01'), tags: { 'tag-group': 'A' } },
+      { ...person('p2', '學生 2', '02'), tags: { 'tag-group': 'A' } },
+      { ...person('p3', '學生 3', '03'), tags: { 'tag-group': 'B' } },
+      { ...person('p4', '學生 4', '04'), tags: { 'tag-group': 'B' } },
+    ]
+    project.rules = [
+      createRule('separate', {
+        tagId: 'tag-group',
+        adjacency: 'all8',
+      }),
+      pinRule('p1', 'r0c0'),
+    ]
+
+    const outcome = buildSeatingResult(project, {
+      ...baseConfig,
+      optimizer: { maxIterations: 20000, timeLimitMs: 2000 },
+    })
+
+    expect(outcome.ok).toBe(true)
+
+    if (outcome.ok) {
+      expect(outcome.result.assignments.r0c0).toBe('p1')
+      expect(outcome.result.hardViolationCount).toBe(0)
+      expect(outcome.result.ruleCount).toBe(2)
+      expect(outcome.result.satisfiedCount).toBe(2)
     }
   })
 })

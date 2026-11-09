@@ -17,6 +17,10 @@ import {
 import { createInputRevision } from './revision'
 import { parseSeatId } from '../classroom/numbering'
 import { applyRuleEvaluation } from '../rules/evaluateRules'
+import {
+  optimizeSeatingAssignments,
+  type SeatingOptimizerOptions,
+} from './optimizer'
 
 export interface SeatingConfig {
   occupancy: OccupancyMode
@@ -24,6 +28,9 @@ export interface SeatingConfig {
   seed: string
   /** 座位不足時，只安排可容納的人數。 */
   partial: boolean
+  /** 有非固定規則時，是否執行規則最佳化。預設啟用。 */
+  optimize?: boolean
+  optimizer?: SeatingOptimizerOptions
 }
 
 export type SeatingFailureCode =
@@ -367,11 +374,42 @@ export function buildSeatingResult(
     }
   })
 
-  const assignedPersonIds = new Set(Object.values(assignments))
+  const activeSeatIdsForOptimization = [
+    ...new Set([
+      ...occupancy.activeSeats.map((seat) => seat.id),
+      ...Object.keys(assignments),
+    ]),
+  ]
+  const shouldOptimize =
+    config.optimize !== false &&
+    project.rules.some(
+      (rule) => rule.enabled && rule.type !== 'pin',
+    )
+  const assignedBeforeOptimization = new Set(
+    Object.values(assignments),
+  )
+  const optimization = shouldOptimize
+    ? optimizeSeatingAssignments({
+        project,
+        assignments,
+        activeSeatIds: activeSeatIdsForOptimization,
+        fixedPersonIds: [
+          ...pinInfo.pins.map((pin) => pin.personId),
+          ...appliedLockedPersonIds,
+        ],
+        unassignedPersonIds: persons
+          .filter((person) => !assignedBeforeOptimization.has(person.id))
+          .map((person) => person.id),
+        seed: effectiveSeed,
+        options: config.optimizer,
+      })
+    : null
+  const finalAssignments = optimization?.assignments ?? assignments
+  const assignedPersonIds = new Set(Object.values(finalAssignments))
   const unassigned = persons
     .filter((person) => !assignedPersonIds.has(person.id))
     .map((person) => person.id)
-  const assignedCount = Object.keys(assignments).length
+  const assignedCount = Object.keys(finalAssignments).length
   const resultOccupancy: OccupancyMode = occupancy.mode
   const result: AssignmentResult = {
     id: crypto.randomUUID(),
@@ -385,7 +423,7 @@ export function buildSeatingResult(
     ),
     occupancy: resultOccupancy,
     allocation: config.allocation,
-    assignments,
+    assignments: finalAssignments,
     unassignedPersonIds: unassigned,
     lockedPersonIds: [
       ...pinInfo.pins.map((pin) => pin.personId),
@@ -393,7 +431,7 @@ export function buildSeatingResult(
     ],
     hardViolationCount: 0,
     softCost: 0,
-    timedOut: false,
+    timedOut: optimization?.timedOut ?? false,
     violations: [],
     satisfiedCount: 0,
     ruleCount: 0,
