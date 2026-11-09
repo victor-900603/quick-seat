@@ -21,6 +21,8 @@ import {
 import { CELL_TYPE_LABELS, TOOLS, type EditorTool } from './editorTypes'
 import { getSeatRefs, seatId } from './numbering'
 import { useReadOnlyMode } from '../../lib/useReadOnlyMode'
+import { ShareClassroomDialog } from '../share/components/ShareClassroomDialog'
+import { CLASSROOM_SHARE_HASH_PREFIX } from '../share/classroomShare'
 
 const LEGEND: { type: CellType; className: string }[] = [
   { type: 'seat', className: 'border-accent/40 bg-accent-soft' },
@@ -67,6 +69,7 @@ export function ClassroomEditor() {
     () => new Map(),
   )
   const [paintType, setPaintType] = useState<CellType | null>(null)
+  const [sharing, setSharing] = useState(false)
 
   const refs = useMemo(() => getSeatRefs(classroom), [classroom])
   const refsById = useMemo(
@@ -152,6 +155,19 @@ export function ClassroomEditor() {
     window.addEventListener('pointerup', finishInteraction)
     return () => window.removeEventListener('pointerup', finishInteraction)
   }, [finishInteraction])
+
+  useEffect(() => {
+    const closeShareForPreview = () => {
+      if (window.location.hash.startsWith(CLASSROOM_SHARE_HASH_PREFIX)) {
+        setSharing(false)
+      }
+    }
+
+    closeShareForPreview()
+    window.addEventListener('hashchange', closeShareForPreview)
+    return () =>
+      window.removeEventListener('hashchange', closeShareForPreview)
+  }, [])
 
   const handleCellPointerDown = (
     position: CellPosition,
@@ -257,6 +273,8 @@ export function ClassroomEditor() {
     resizeRoom(cols, rows)
   }
 
+  const closeShare = useCallback(() => setSharing(false), [])
+
   const visibleSelected =
     selected && isInsideClassroom(classroom, selected) ? selected : null
   const visibleHover =
@@ -287,26 +305,36 @@ export function ClassroomEditor() {
           </p>
         </div>
 
-        <div className="flex border border-line bg-surface">
-          {[
-            { label: '座位', value: counts.seat },
-            { label: '走道', value: counts.aisle },
-            { label: '禁坐', value: counts.blocked },
-          ].map((stat, index) => (
-            <div
-              className={`px-4 py-2 text-right ${
-                index > 0 ? 'border-l border-line' : ''
-              }`}
-              key={stat.label}
-            >
-              <p className="font-mono text-[8px] tracking-[0.16em] text-muted">
-                {stat.label}
-              </p>
-              <p className="font-display text-xl leading-tight text-ink">
-                {stat.value}
-              </p>
-            </div>
-          ))}
+        <div className="flex flex-wrap items-stretch gap-2">
+          <button
+            aria-haspopup="dialog"
+            className="border border-line bg-surface px-3 py-2 text-xs text-ink transition-colors hover:border-accent hover:text-accent"
+            onClick={() => setSharing(true)}
+            type="button"
+          >
+            分享教室
+          </button>
+          <div className="flex border border-line bg-surface">
+            {[
+              { label: '座位', value: counts.seat },
+              { label: '走道', value: counts.aisle },
+              { label: '禁坐', value: counts.blocked },
+            ].map((stat, index) => (
+              <div
+                className={`px-4 py-2 text-right ${
+                  index > 0 ? 'border-l border-line' : ''
+                }`}
+                key={stat.label}
+              >
+                <p className="font-mono text-[8px] tracking-[0.16em] text-muted">
+                  {stat.label}
+                </p>
+                <p className="font-display text-xl leading-tight text-ink">
+                  {stat.value}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -400,6 +428,10 @@ export function ClassroomEditor() {
           selected={visibleSelected}
         />
       </div>
+
+      {sharing ? (
+        <ShareClassroomDialog classroom={classroom} onClose={closeShare} />
+      ) : null}
     </div>
   )
 }
