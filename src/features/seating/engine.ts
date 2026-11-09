@@ -16,6 +16,7 @@ import {
 } from './occupancy'
 import { createInputRevision } from './revision'
 import { parseSeatId } from '../classroom/numbering'
+import { applyRuleEvaluation } from '../rules/evaluateRules'
 
 export interface SeatingConfig {
   occupancy: OccupancyMode
@@ -191,7 +192,7 @@ export function buildManualAssignment(
 
   return {
     ok: true,
-    result,
+    result: applyRuleEvaluation(project, result),
     assignedCount: 0,
     unassignedCount: persons.length,
     capacity: occupancy.capacity,
@@ -400,7 +401,7 @@ export function buildSeatingResult(
 
   return {
     ok: true,
-    result,
+    result: applyRuleEvaluation(project, result),
     assignedCount,
     unassignedCount: unassigned.length,
     capacity: occupancy.capacity,

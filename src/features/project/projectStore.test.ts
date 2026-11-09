@@ -5,6 +5,7 @@ import {
   parseTextTable,
 } from '../roster/importRoster'
 import { createTagDef } from '../roster/rosterOps'
+import { createRule } from '../rules/ruleOps'
 import { createDefaultProject } from './defaultProject'
 import { useProjectStore } from './projectStore'
 
@@ -560,5 +561,68 @@ describe('projectStore', () => {
     expect(useProjectStore.getState().project.name).toBe('匯入的專案')
     expect(history().pastStates).toHaveLength(0)
     expect(history().futureStates).toHaveLength(0)
+  })
+
+  it('新增、更新、切換與刪除規則並寫入歷史', () => {
+    const tagId = useProjectStore.getState().addTag({
+      name: '組別',
+      type: 'enum',
+      options: ['A'],
+    })!
+    const rule = {
+      ...createRule('separate', { tagId }),
+      id: 'rule-1',
+      values: ['A'],
+    }
+
+    expect(useProjectStore.getState().addRule(rule)).toBe(true)
+    expect(useProjectStore.getState().project.rules).toHaveLength(1)
+    expect(history().pastStates).toHaveLength(2)
+
+    useProjectStore.getState().updateRule({ ...rule, note: '分開坐' })
+    expect(useProjectStore.getState().project.rules[0].note).toBe('分開坐')
+
+    useProjectStore.getState().toggleRule('rule-1')
+    expect(useProjectStore.getState().project.rules[0].enabled).toBe(false)
+
+    useProjectStore.getState().deleteRule('rule-1')
+    expect(useProjectStore.getState().project.rules).toEqual([])
+  })
+
+  it('拒絕無效規則並在既有結果上更新衝突', () => {
+    const store = useProjectStore.getState()
+    const tagId = store.addTag({
+      name: '組別',
+      type: 'enum',
+      options: ['A'],
+    })!
+    const firstId = store.addPerson({ name: '甲' })!
+    const secondId = useProjectStore.getState().addPerson({ name: '乙' })!
+    useProjectStore.getState().setPersonsTag([firstId, secondId], tagId, 'A')
+    useProjectStore.getState().runSeating(seatingConfig)
+
+    const invalid = {
+      ...createRule('separate', { tagId: 'missing' }),
+      id: 'invalid-rule',
+    }
+    expect(useProjectStore.getState().addRule(invalid)).toBe(false)
+
+    const valid = {
+      ...createRule('separate', { tagId }),
+      id: 'valid-rule',
+      adjacency: 'orthogonal' as const,
+    }
+    expect(useProjectStore.getState().addRule(valid)).toBe(true)
+
+    const assignment =
+      useProjectStore.getState().project.currentAssignment!
+    expect(assignment.hardViolationCount).toBe(1)
+    expect(assignment.violations[0].ruleId).toBe('valid-rule')
+
+    useProjectStore.getState().toggleRule('valid-rule')
+    expect(
+      useProjectStore.getState().project.currentAssignment
+        ?.hardViolationCount,
+    ).toBe(0)
   })
 })

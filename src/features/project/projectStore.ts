@@ -59,6 +59,16 @@ import {
   swapOrMove,
 } from '../seating/seatingOps'
 import { buildOccupancySummary } from '../seating/occupancy'
+import { applyRuleEvaluation } from '../rules/evaluateRules'
+import {
+  addRule as addRuleToProject,
+  normalizeRule,
+  pruneInvalidPinRules,
+  removeRule as removeRuleFromProject,
+  replaceRule as replaceRuleInProject,
+  toggleRule as toggleRuleInProject,
+  validateRule,
+} from '../rules/ruleOps'
 
 export interface SeatingActionResult {
   ok: boolean
@@ -106,6 +116,10 @@ export interface ProjectStore {
   updateTag: (tagId: string, patch: TagPatch) => boolean
   deleteTag: (tagId: string) => void
   importRoster: (plan: ImportPlan, mode: ImportMode) => ImportOutcome
+  addRule: (rule: Rule) => boolean
+  updateRule: (rule: Rule) => boolean
+  deleteRule: (ruleId: string) => void
+  toggleRule: (ruleId: string) => void
   replaceProject: (project: Project) => void
 }
 
@@ -225,6 +239,25 @@ function refreshUnassigned(project: Project): void {
       .filter((personId) => !assigned.has(personId))
 }
 
+function refreshAssignmentEvaluation(project: Project): void {
+  if (!project.currentAssignment) {
+    return
+  }
+
+  project.currentAssignment = applyRuleEvaluation(
+    project,
+    project.currentAssignment,
+  )
+}
+
+function prunePinRules(project: Project): void {
+  project.rules = pruneInvalidPinRules(
+    project.rules,
+    project.classroom,
+    project.roster.persons,
+  )
+}
+
 export const useProjectStore = create<ProjectStore>()(
   temporal(
     immer<ProjectStore>((set, get) => ({
@@ -253,6 +286,8 @@ export const useProjectStore = create<ProjectStore>()(
 
           state.project.classroom = next
           pruneAssignmentSeats(state.project)
+          prunePinRules(state.project)
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
       },
@@ -267,6 +302,8 @@ export const useProjectStore = create<ProjectStore>()(
 
           state.project.classroom = next
           pruneAssignmentSeats(state.project)
+          prunePinRules(state.project)
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
       },
@@ -385,6 +422,7 @@ export const useProjectStore = create<ProjectStore>()(
           current.assignments = change.assignments
           refreshUnassigned(state.project)
           removeLock(state.project, personId)
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
       },
@@ -460,6 +498,7 @@ export const useProjectStore = create<ProjectStore>()(
           }
 
           refreshUnassigned(state.project)
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
 
@@ -560,6 +599,7 @@ export const useProjectStore = create<ProjectStore>()(
           }
 
           refreshUnassigned(state.project)
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
 
@@ -589,6 +629,7 @@ export const useProjectStore = create<ProjectStore>()(
           }
 
           state.project.roster = next
+          refreshUnassigned(state.project)
           touch(state.project)
         })
 
@@ -620,6 +661,7 @@ export const useProjectStore = create<ProjectStore>()(
           }
 
           state.project.roster = next
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
 
@@ -639,6 +681,7 @@ export const useProjectStore = create<ProjectStore>()(
 
           state.project.roster = next
           prunePersonReferences(state.project)
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
       },
@@ -657,6 +700,7 @@ export const useProjectStore = create<ProjectStore>()(
           }
 
           state.project.roster = next
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
       },
@@ -712,6 +756,7 @@ export const useProjectStore = create<ProjectStore>()(
           }
 
           state.project.roster = next
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
 
@@ -730,6 +775,7 @@ export const useProjectStore = create<ProjectStore>()(
           state.project.rules = state.project.rules.filter(
             (rule) => !ruleUsesTag(rule, tagId),
           )
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
       },
@@ -740,10 +786,102 @@ export const useProjectStore = create<ProjectStore>()(
         set((state) => {
           state.project.roster = outcome.roster
           prunePersonReferences(state.project)
+          refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })
 
         return outcome
+      },
+
+      addRule: (rule) => {
+        const normalized = normalizeRule(rule)
+        const validation = validateRule(
+          normalized,
+          get().project,
+          normalized.id,
+        )
+
+        if (!validation.valid) {
+          return false
+        }
+
+        set((state) => {
+          const next = addRuleToProject(state.project.rules, normalized)
+
+          if (next === state.project.rules) {
+            return
+          }
+
+          state.project.rules = next
+          refreshAssignmentEvaluation(state.project)
+          touch(state.project)
+        })
+
+        return true
+      },
+
+      updateRule: (rule) => {
+        const normalized = normalizeRule(rule)
+        const validation = validateRule(
+          normalized,
+          get().project,
+          normalized.id,
+        )
+
+        if (!validation.valid) {
+          return false
+        }
+
+        set((state) => {
+          const next = replaceRuleInProject(
+            state.project.rules,
+            normalized,
+          )
+
+          if (next === state.project.rules) {
+            return
+          }
+
+          state.project.rules = next
+          refreshAssignmentEvaluation(state.project)
+          touch(state.project)
+        })
+
+        return true
+      },
+
+      deleteRule: (ruleId) => {
+        set((state) => {
+          const next = removeRuleFromProject(
+            state.project.rules,
+            ruleId,
+          )
+
+          if (next === state.project.rules) {
+            return
+          }
+
+          state.project.rules = next
+          refreshAssignmentEvaluation(state.project)
+          touch(state.project)
+        })
+      },
+
+      toggleRule: (ruleId) => {
+        set((state) => {
+          const next = toggleRuleInProject(
+            state.project.rules,
+            ruleId,
+          )
+
+          if (next === state.project.rules) {
+            return
+          }
+
+          state.project.rules = next
+          refreshAssignmentEvaluation(state.project)
+          touch(state.project)
+        })
       },
 
       replaceProject: (project) => {
