@@ -613,6 +613,22 @@ export function ExportSettingsPanel({
                 />
               ))}
             </div>
+
+            <div className="border-t border-line pt-4">
+              <h4 className="text-xs font-medium text-ink">規則報告</h4>
+              <div className="mt-2">
+                <ToggleField
+                  checked={options.includeRuleReport}
+                  label="包含規則報告工作表"
+                  onChange={(checked) =>
+                    onUpdateOptions({ includeRuleReport: checked })
+                  }
+                />
+              </div>
+              <p className="mt-2 text-[10px] leading-4 text-muted">
+                規則報告可能包含標籤、需求、備註與衝突資訊，預設不輸出。
+              </p>
+            </div>
           </Tabs.Content>
         </Tabs.Root>
       </section>

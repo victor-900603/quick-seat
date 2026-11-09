@@ -161,6 +161,10 @@ export function loadExportOptions(
         EXPORT_LAYOUT_LIMITS.unusedRowHeight.max,
       ),
       excelHiddenColumns: readHiddenColumns(parsed.excelHiddenColumns),
+      includeRuleReport: readBoolean(
+        parsed.includeRuleReport,
+        defaults.includeRuleReport,
+      ),
     }
   } catch {
     return DEFAULT_EXPORT_CONTENT_OPTIONS

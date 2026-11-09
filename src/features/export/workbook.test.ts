@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Cell } from 'write-excel-file/browser'
 import { createExportFixture } from '../../test/projectFixtures'
 import { DEFAULT_EXPORT_CONTENT_OPTIONS, buildExportSnapshot } from './exportData'
+import type { ExportRuleReport } from './ruleReport'
 import { buildWorkbookSheets } from './workbook'
 
 function value(cell: Cell): unknown {
@@ -12,6 +13,32 @@ function value(cell: Cell): unknown {
 
 function values(sheet: { data: Cell[][] }): unknown[][] {
   return sheet.data.map((row) => row.map(value))
+}
+
+const ruleReport: ExportRuleReport = {
+  rows: [
+    {
+      ruleId: 'rule-1',
+      type: 'separate',
+      typeLabel: '分開',
+      summary: '「分組」的「A」彼此分開',
+      strength: 'hard',
+      weight: 5,
+      enabled: true,
+      status: '1 個衝突',
+      violationCount: 1,
+      seatCodes: ['01', '02'],
+      personNames: ['林品妤', '陳柏宇'],
+      note: '考試時分開',
+    },
+  ],
+  totalRules: 1,
+  enabledRules: 1,
+  violationCount: 1,
+  hardViolationCount: 1,
+  softCost: 0,
+  stale: false,
+  timedOut: false,
 }
 
 describe('workbook', () => {
@@ -57,6 +84,39 @@ describe('workbook', () => {
 
     expect(values(sheet)[3][0]).toBe('01')
     expect(sheet.data[3][0]).toMatchObject({ align: 'left' })
+  })
+
+  it('可選擇加入規則報告工作表', () => {
+    const snapshot = buildExportSnapshot(createExportFixture())
+    const withoutReport = buildWorkbookSheets(snapshot, {
+      ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+      includeRuleReport: true,
+    })
+    const withReport = buildWorkbookSheets(
+      snapshot,
+      {
+        ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+        includeRuleReport: true,
+      },
+      ruleReport,
+    )
+
+    expect(withoutReport).toHaveLength(2)
+    expect(withReport).toHaveLength(3)
+    expect(withReport[2].sheet).toBe('規則報告')
+    expect(values(withReport[2])[0][0]).toBe('規則報告')
+    expect(values(withReport[2])[2][0]).toBe('類型')
+    expect(values(withReport[2])[3]).toEqual([
+      '分開',
+      '「分組」的「A」彼此分開',
+      '硬約束',
+      5,
+      '1 個衝突',
+      1,
+      '01、02',
+      '林品妤、陳柏宇',
+      '考試時分開',
+    ])
   })
 
   it('Excel 使用固定欄寬、列高、字級與自動換行', () => {

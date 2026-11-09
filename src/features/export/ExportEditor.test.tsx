@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createExportFixture } from '../../test/projectFixtures'
 import { createDefaultProject } from '../project/defaultProject'
 import { useProjectStore } from '../project/projectStore'
+import { createRule } from '../rules/ruleOps'
 import { ExportEditor } from './ExportEditor'
 import { downloadBlob, downloadText } from './download'
 import { serializeProject } from './projectFile'
@@ -101,6 +102,7 @@ describe('ExportEditor', () => {
       expect(workbookMock).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ showAisleLabel: false }),
+        expect.anything(),
       )
     })
   })
@@ -150,6 +152,7 @@ describe('ExportEditor', () => {
           template: '{name}｜{tag:分組}',
           align: 'left',
         }),
+        expect.anything(),
       )
     })
   })
@@ -192,6 +195,7 @@ describe('ExportEditor', () => {
           htmlFontSize: 13,
           htmlWrap: false,
         }),
+        expect.anything(),
       )
     })
   })
@@ -239,6 +243,7 @@ describe('ExportEditor', () => {
           unusedColumnWidth: 50,
           unusedRowHeight: 50,
         }),
+        expect.anything(),
       )
     })
   })
@@ -285,6 +290,7 @@ describe('ExportEditor', () => {
           showUnassigned: false,
           excelHiddenColumns: expect.arrayContaining(['extra:電話']),
         }),
+        expect.anything(),
       )
     })
   })
@@ -357,6 +363,34 @@ describe('ExportEditor', () => {
       '{name}｜{studentNo}',
     )
     expect(screen.getByLabelText('靠左')).toBeChecked()
+  })
+
+  it('可選擇將規則報告加入 Excel', async () => {
+    const user = userEvent.setup()
+    const project = createExportFixture()
+    const tag = project.roster.tags[0]
+    project.rules = [
+      createRule('separate', {
+        tagId: tag.id,
+        adjacency: 'orthogonal',
+      }),
+    ]
+    prepareProject(project)
+    render(<ExportEditor />)
+
+    await user.click(screen.getByRole('tab', { name: 'Excel' }))
+    await user.click(screen.getByLabelText('包含規則報告工作表'))
+    await user.click(screen.getByRole('button', { name: '下載 Excel' }))
+
+    await waitFor(() => {
+      expect(workbookMock).toHaveBeenCalledTimes(1)
+    })
+
+    expect(workbookMock.mock.calls[0][2]).toMatchObject({
+      totalRules: 1,
+      enabledRules: 1,
+      rows: [{ typeLabel: '分開' }],
+    })
   })
 
   it('下載 HTML 時輸出目前專案內容與正確檔名', async () => {

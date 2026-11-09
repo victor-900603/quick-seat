@@ -94,6 +94,7 @@ export interface ExportContentOptions {
   unusedColumnWidth: number
   unusedRowHeight: number
   excelHiddenColumns: string[]
+  includeRuleReport: boolean
 }
 
 export interface ExportPageDimensions {
@@ -269,6 +270,7 @@ export const DEFAULT_EXPORT_CONTENT_OPTIONS: ExportContentOptions = {
   unusedColumnWidth: 100,
   unusedRowHeight: 100,
   excelHiddenColumns: [],
+  includeRuleReport: false,
 }
 
 export interface ExportTemplateField {

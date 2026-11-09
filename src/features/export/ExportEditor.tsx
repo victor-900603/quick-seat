@@ -22,6 +22,7 @@ import { buildHtmlDocument, countExportPages } from './html'
 import { HtmlPreviewDialog } from './HtmlPreviewDialog'
 import { PrintPreview } from './PrintPreview'
 import { parseProjectFile, serializeProject } from './projectFile'
+import { buildRuleReport } from './ruleReport'
 import { createWorkbookBlob } from './workbook'
 import { loadExportOptions, saveExportOptions } from './exportPreferences'
 import { ExportHeader } from './components/ExportHeader'
@@ -85,6 +86,7 @@ export function ExportEditor() {
   }
 
   const snapshot = useMemo(() => buildExportSnapshot(project), [project])
+  const ruleReport = useMemo(() => buildRuleReport(project), [project])
   const previewHtml = useMemo(
     () => buildHtmlDocument(snapshot, options),
     [options, snapshot],
@@ -130,7 +132,7 @@ export function ExportEditor() {
     setBusy('xlsx')
 
     try {
-      const blob = await createWorkbookBlob(snapshot, options)
+      const blob = await createWorkbookBlob(snapshot, options, ruleReport)
       downloadBlob(blob, createExportFileName(project.name, 'xlsx', date))
       setNotice({ tone: 'success', message: '已下載 Excel 座位表。' })
     } catch (error) {

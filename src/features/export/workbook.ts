@@ -11,6 +11,7 @@ import {
   getExportSeatContent,
   getExportTrackLayout,
 } from './exportData'
+import type { ExportRuleReport } from './ruleReport'
 
 const COLORS = {
   board: '#173b32',
@@ -22,6 +23,7 @@ const COLORS = {
   line: '#d8d5c7',
   accent: '#2f6b58',
   accentSoft: '#e2ebe5',
+  mark: '#b8502f',
   aisle: '#e7e4d7',
   blocked: '#1f2a26',
 } as const
@@ -359,19 +361,121 @@ function buildRosterSheet(
   }
 }
 
+function buildRuleReportSheet(report: ExportRuleReport): Sheet<Blob> {
+  const columns: Array<{ header: string; width: number }> = [
+    { header: '類型', width: 12 },
+    { header: '規則', width: 34 },
+    { header: '強度', width: 10 },
+    { header: '權重', width: 8 },
+    { header: '狀態', width: 14 },
+    { header: '衝突', width: 8 },
+    { header: '座位', width: 22 },
+    { header: '人員', width: 24 },
+    { header: '備註', width: 26 },
+  ]
+  const data: Cell[][] = [
+    [
+      cell('規則報告', {
+        columnSpan: columns.length,
+        align: 'center',
+        backgroundColor: COLORS.board,
+        textColor: COLORS.chalk,
+        fontSize: 16,
+        fontWeight: 'bold',
+      }),
+    ],
+    [
+      cell(
+        `規則 ${report.totalRules} 條（啟用 ${report.enabledRules} 條）　衝突 ${report.violationCount} 個　硬約束 ${report.hardViolationCount}　軟成本 ${report.softCost}${
+          report.stale ? '　結果可能已過期' : ''
+        }${report.timedOut ? '　最佳化逾時' : ''}`,
+        {
+          columnSpan: columns.length,
+          textColor: COLORS.muted,
+          fontSize: 10,
+        },
+      ),
+    ],
+    columns.map((column) =>
+      cell(column.header, {
+        fontWeight: 'bold',
+        backgroundColor: COLORS.board,
+        textColor: COLORS.chalk,
+        ...BORDER,
+      }),
+    ),
+  ]
+
+  if (report.rows.length === 0) {
+    data.push([
+      cell('尚無規則', {
+        columnSpan: columns.length,
+        textColor: COLORS.muted,
+      }),
+    ])
+  } else {
+    for (const row of report.rows) {
+      data.push([
+        cell(row.typeLabel, { ...BORDER }),
+        cell(row.summary, { ...BORDER, wrap: true }),
+        cell(row.strength === 'hard' ? '硬約束' : '軟約束', {
+          ...BORDER,
+          align: 'center',
+          textColor:
+            row.strength === 'hard' ? COLORS.mark : COLORS.accent,
+        }),
+        cell(row.enabled ? row.weight : '', {
+          ...BORDER,
+          align: 'center',
+        }),
+        cell(row.status, {
+          ...BORDER,
+          textColor: row.enabled
+            ? row.violationCount > 0
+              ? COLORS.mark
+              : COLORS.accent
+            : COLORS.muted,
+        }),
+        cell(row.violationCount, { ...BORDER, align: 'center' }),
+        cell(row.seatCodes.join('、'), { ...BORDER, wrap: true }),
+        cell(row.personNames.join('、'), { ...BORDER, wrap: true }),
+        cell(row.note, { ...BORDER, wrap: true }),
+      ])
+    }
+  }
+
+  return {
+    data,
+    sheet: '規則報告',
+    showGridLines: false,
+    columns: columns.map((column) => ({ width: column.width })),
+  }
+}
+
 export function buildWorkbookSheets(
   snapshot: ExportSnapshot,
   options: ExportContentOptions = DEFAULT_EXPORT_CONTENT_OPTIONS,
+  ruleReport?: ExportRuleReport,
 ): Sheet<Blob>[] {
-  return [buildSeatSheet(snapshot, options), buildRosterSheet(snapshot, options)]
+  const sheets = [
+    buildSeatSheet(snapshot, options),
+    buildRosterSheet(snapshot, options),
+  ]
+
+  if (options.includeRuleReport && ruleReport) {
+    sheets.push(buildRuleReportSheet(ruleReport))
+  }
+
+  return sheets
 }
 
 export async function createWorkbookBlob(
   snapshot: ExportSnapshot,
   options: ExportContentOptions = DEFAULT_EXPORT_CONTENT_OPTIONS,
+  ruleReport?: ExportRuleReport,
 ): Promise<Blob> {
   const { default: writeXlsxFile } = await import('write-excel-file/browser')
-  const file = writeXlsxFile(buildWorkbookSheets(snapshot, options))
+  const file = writeXlsxFile(buildWorkbookSheets(snapshot, options, ruleReport))
 
   return file.toBlob()
 }
