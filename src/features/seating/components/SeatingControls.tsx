@@ -5,6 +5,7 @@ import type {
   ProjectSettings,
 } from '../../../types/domain'
 import type { CapacityReport } from '../capacity'
+import { DEFAULT_OPTIMIZER_TIME_LIMIT_MS } from '../optimizer'
 
 export type SeatingMethod = 'auto' | 'manual'
 
@@ -314,7 +315,7 @@ export function SeatingControls({
               <span>
                 依 {activeRuleCount} 條可調整規則最佳化
                 <span className="mt-0.5 block text-[10px] leading-4 text-muted/80">
-                  重新排座時會嘗試降低衝突；規則越多，計算時間越長。
+                  重新排座時會嘗試降低衝突；規則越多，計算時間越長，最多 {DEFAULT_OPTIMIZER_TIME_LIMIT_MS / 1000} 秒。
                 </span>
               </span>
             </label>

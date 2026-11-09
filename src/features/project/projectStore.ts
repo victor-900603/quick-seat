@@ -87,6 +87,7 @@ export interface ProjectStore {
   updateCellSize: (size: number) => void
   setDisplay: (display: ProjectSettings['display']) => void
   runSeating: (config: SeatingConfig) => SeatingOutcome
+  applySeatingResult: (result: AssignmentResult) => void
   clearAssignment: () => void
   togglePersonLock: (personId: string) => void
   unassignPerson: (personId: string) => void
@@ -361,16 +362,18 @@ export const useProjectStore = create<ProjectStore>()(
       runSeating: (config) => {
         const outcome = buildSeatingResult(get().project, config)
 
-        if (!outcome.ok) {
-          return outcome
+        if (outcome.ok) {
+          get().applySeatingResult(outcome.result)
         }
 
+        return outcome
+      },
+
+      applySeatingResult: (result) => {
         set((state) => {
-          state.project.currentAssignment = outcome.result
+          state.project.currentAssignment = result
           touch(state.project)
         })
-
-        return outcome
       },
 
       clearAssignment: () => {

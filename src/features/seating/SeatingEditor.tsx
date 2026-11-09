@@ -11,11 +11,16 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type MouseEvent,
 } from 'react'
 import { useReadOnlyMode } from '../../lib/useReadOnlyMode'
-import type { AllocationMode, OccupancyMode } from '../../types/domain'
+import type {
+  AllocationMode,
+  AssignmentResult,
+  OccupancyMode,
+} from '../../types/domain'
 import { getSeatRefs } from '../classroom/numbering'
 import { useProjectStore } from '../project/projectStore'
 import { createSeed } from './allocation'
@@ -23,8 +28,18 @@ import {
   expandClassroomForCapacity,
   getCapacityReport,
 } from './capacity'
+import type { SeatingOutcome } from './engine'
 import { buildOccupancySummary } from './occupancy'
-import { isAssignmentStale } from './revision'
+import { createInputRevision, isAssignmentStale } from './revision'
+import {
+  SeatingWorkerCancelledError,
+  runSeatingInWorker,
+  type SeatingWorkerRun,
+} from './seatingWorker'
+import {
+  DEFAULT_OPTIMIZER_TIME_LIMIT_MS,
+  type SeatingOptimizationProgress,
+} from './optimizer'
 import { seatCollisionDetection, cursorOffsetModifier } from './seatingDnd'
 import { evaluateAssignment } from '../rules/evaluateRules'
 import { RuleViolationsPanel } from '../rules/components/RuleViolationsPanel'
@@ -87,6 +102,9 @@ function sameAllocation(
 export function SeatingEditor() {
   const project = useProjectStore((state) => state.project)
   const runSeating = useProjectStore((state) => state.runSeating)
+  const applySeatingResult = useProjectStore(
+    (state) => state.applySeatingResult,
+  )
   const clearAssignment = useProjectStore((state) => state.clearAssignment)
   const togglePersonLock = useProjectStore((state) => state.togglePersonLock)
   const unassignPerson = useProjectStore((state) => state.unassignPerson)
@@ -123,7 +141,14 @@ export function SeatingEditor() {
   )
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
+  const [optimizing, setOptimizing] = useState(false)
+  const [optimizationProgress, setOptimizationProgress] =
+    useState<SeatingOptimizationProgress | null>(null)
+  const workerRef = useRef<SeatingWorkerRun | null>(null)
+  const optimizingRef = useRef(false)
+  const mountedRef = useRef(true)
 
+  const interactionDisabled = readOnly || optimizing
   const persons = project.roster.persons
   const personCount = persons.length
   const display = project.settings.display
@@ -260,15 +285,7 @@ export function SeatingEditor() {
           previewSummary.resolvedPhase ?? '自動'
         }`
 
-  const handleRun = (partial = false) => {
-    const outcome = runSeating({
-      occupancy,
-      allocation,
-      seed,
-      partial,
-      optimize,
-    })
-
+  const finishRun = (outcome: SeatingOutcome) => {
     if (!outcome.ok) {
       setNotice({ tone: 'error', message: outcome.message })
       return
@@ -287,6 +304,98 @@ export function SeatingEditor() {
           : '目前符合所有啟用中的規則。'
       }${outcome.result.timedOut ? ' 最佳化已達時間上限。' : ''}`,
     })
+  }
+
+  const isCurrentResult = (result: AssignmentResult): boolean => {
+    const current = useProjectStore.getState().project
+
+    return (
+      createInputRevision(
+        current,
+        result.occupancy,
+        result.allocation,
+      ) === result.inputRevision
+    )
+  }
+
+  const handleRun = async (partial = false) => {
+    if (optimizingRef.current) {
+      return
+    }
+
+    const config = {
+      occupancy,
+      allocation,
+      seed,
+      partial,
+      optimize,
+    }
+    const workerRun =
+      optimize && activeRuleCount > 0
+        ? runSeatingInWorker(project, config, {
+            onProgress: setOptimizationProgress,
+          })
+        : null
+
+    if (!workerRun) {
+      finishRun(runSeating(config))
+      return
+    }
+
+    optimizingRef.current = true
+    workerRef.current = workerRun
+    setOptimizing(true)
+    setOptimizationProgress(null)
+
+    try {
+      const outcome = await workerRun.result
+
+      if (!outcome.ok) {
+        finishRun(outcome)
+        return
+      }
+
+      if (!isCurrentResult(outcome.result)) {
+        setNotice({
+          tone: 'error',
+          message: '排座期間專案已變更，本次結果已捨棄。請重新排座。',
+        })
+        return
+      }
+
+      applySeatingResult(outcome.result)
+      finishRun(outcome)
+    } catch (error) {
+      if (error instanceof SeatingWorkerCancelledError) {
+        return
+      }
+
+      if (mountedRef.current) {
+        setNotice({
+          tone: 'error',
+          message:
+            error instanceof Error
+              ? error.message
+              : '背景排座發生未知錯誤。',
+        })
+      }
+    } finally {
+      if (workerRef.current === workerRun) {
+        workerRef.current = null
+      }
+
+      optimizingRef.current = false
+
+      if (mountedRef.current) {
+        setOptimizing(false)
+        setOptimizationProgress(null)
+      }
+    }
+  }
+
+  const handleCancelOptimization = () => {
+    workerRef.current?.cancel()
+    setNotice({ tone: 'success', message: '已取消排座最佳化。' })
   }
 
   const handleExpand = () => {
@@ -408,6 +517,15 @@ export function SeatingEditor() {
   }
 
   useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+      workerRef.current?.cancel()
+    }
+  }, [])
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) {
         return
@@ -431,6 +549,10 @@ export function SeatingEditor() {
   }, [clearSelection])
 
   const handleSeatClick = (seatId: string) => {
+    if (optimizing) {
+      return
+    }
+
     if (readOnly) {
       setSelectedSeatId((current) => (current === seatId ? null : seatId))
       setSelectedPersonId(null)
@@ -451,6 +573,10 @@ export function SeatingEditor() {
   }
 
   const handleUnassignedSelect = (personId: string) => {
+    if (optimizing) {
+      return
+    }
+
     if (
       !readOnly &&
       selectedSeatId &&
@@ -521,6 +647,16 @@ export function SeatingEditor() {
     { label: '已分配', value: assignedCount },
     { label: '未分配', value: unassignedPersons.length },
   ]
+  const optimizationPercent = optimizationProgress
+    ? Math.min(
+        100,
+        Math.round(
+          (optimizationProgress.iteration /
+            Math.max(1, optimizationProgress.maxIterations)) *
+            100,
+        ),
+      )
+    : 0
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-8">
@@ -586,7 +722,7 @@ export function SeatingEditor() {
           </span>
           <button
             className="border border-mark/50 bg-surface px-2.5 py-1.5 text-[11px] text-mark hover:bg-mark/10 disabled:opacity-55"
-            disabled={readOnly || !canRun}
+            disabled={readOnly || optimizing || !canRun}
             onClick={() => handleRun()}
             type="button"
           >
@@ -664,7 +800,7 @@ export function SeatingEditor() {
                   lockedPersonIds={lockedPersonIds}
                   onSeatClick={handleSeatClick}
                   personsById={personsById}
-                  readOnly={readOnly}
+                  readOnly={interactionDisabled}
                   refsById={refsById}
                   selectedPersonId={selectedPersonId}
                   selectedSeatId={selectedSeatId}
@@ -693,37 +829,82 @@ export function SeatingEditor() {
               lockedPersonIds={lockedPersonIds}
               onSelect={handleUnassignedSelect}
               persons={unassignedPersons}
-              readOnly={readOnly}
+              readOnly={interactionDisabled}
               selectedPersonId={selectedPersonId}
             />
           </div>
 
           <aside className="space-y-5">
-            <SeatingControls
-              activeRuleCount={activeRuleCount}
-              allocation={allocation}
-              canExpand={Boolean(expandedSize)}
-              canRun={canRun}
-              capacityReport={capacityReport}
-              display={display}
-              hasAssignment={Boolean(assignment)}
-              method={method}
-              occupancy={occupancy}
-              onAllocationChange={setAllocation}
-              onClear={handleClear}
-              onDisplayChange={setDisplay}
-              onExpand={handleExpand}
-              onGenerateSeed={() => setSeed(createSeed())}
-              onMethodChange={setMethod}
-              onOccupancyChange={setOccupancy}
-              onOptimizeChange={setOptimize}
-              onPartialRun={() => handleRun(true)}
-              onRun={() => handleRun()}
-              onSeedChange={setSeed}
-              optimize={optimize}
-              readOnly={readOnly}
-              seed={seed}
-            />
+            {optimizing ? (
+              <section
+                aria-live="polite"
+                className="border border-accent/40 bg-surface p-4"
+                role="status"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[9px] tracking-[0.16em] text-accent">
+                      OPTIMIZING
+                    </p>
+                    <h3 className="mt-0.5 text-sm font-medium text-ink">
+                      背景最佳化中
+                    </h3>
+                  </div>
+                  <button
+                    className="border border-line bg-paper px-2.5 py-1.5 text-[11px] text-muted transition-colors hover:border-mark/50 hover:text-mark"
+                    onClick={handleCancelOptimization}
+                    type="button"
+                  >
+                    取消
+                  </button>
+                </div>
+                <div
+                  aria-hidden="true"
+                  className="mt-3 h-1.5 overflow-hidden bg-paper"
+                >
+                  <div
+                    className="h-full bg-accent transition-[width] duration-150"
+                    style={{ width: `${optimizationPercent}%` }}
+                  />
+                </div>
+                <p className="mt-2 font-mono text-[10px] text-muted">
+                  {optimizationProgress
+                    ? `第 ${optimizationProgress.restart} / ${optimizationProgress.restarts} 次重啟 · ${optimizationProgress.iteration} / ${optimizationProgress.maxIterations} 次迭代 · 最長 ${DEFAULT_OPTIMIZER_TIME_LIMIT_MS / 1000} 秒`
+                    : `正在準備座位與規則資料，最長 ${DEFAULT_OPTIMIZER_TIME_LIMIT_MS / 1000} 秒。`}
+                </p>
+              </section>
+            ) : null}
+
+            <fieldset
+              className="min-w-0 border-0 p-0 disabled:opacity-60"
+              disabled={optimizing}
+            >
+              <SeatingControls
+                activeRuleCount={activeRuleCount}
+                allocation={allocation}
+                canExpand={Boolean(expandedSize)}
+                canRun={canRun}
+                capacityReport={capacityReport}
+                display={display}
+                hasAssignment={Boolean(assignment)}
+                method={method}
+                occupancy={occupancy}
+                onAllocationChange={setAllocation}
+                onClear={handleClear}
+                onDisplayChange={setDisplay}
+                onExpand={handleExpand}
+                onGenerateSeed={() => setSeed(createSeed())}
+                onMethodChange={setMethod}
+                onOccupancyChange={setOccupancy}
+                onOptimizeChange={setOptimize}
+                onPartialRun={() => handleRun(true)}
+                onRun={() => handleRun()}
+                onSeedChange={setSeed}
+                optimize={optimize}
+                readOnly={readOnly}
+                seed={seed}
+              />
+            </fieldset>
 
             <RuleViolationsPanel
               evaluation={evaluation}
@@ -740,7 +921,7 @@ export function SeatingEditor() {
               onToggleLock={handleToggleLock}
               onUnassign={handleUnassign}
               personsById={personsById}
-              readOnly={readOnly}
+              readOnly={interactionDisabled}
               refsById={refsById}
               selectedPerson={selectedPerson}
               selectedSeatId={selectedSeatId}
