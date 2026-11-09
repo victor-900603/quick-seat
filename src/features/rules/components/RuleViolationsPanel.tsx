@@ -1,18 +1,42 @@
+import { useState } from 'react'
 import type { RuleEvaluation } from '../evaluateRules'
+import type { Strength } from '../../../types/domain'
 
 interface RuleViolationsPanelProps {
   evaluation: RuleEvaluation | null
   seatCodes: Map<string, string>
+  ruleLabels?: Record<string, string>
   timedOut?: boolean
   onSelectSeat: (seatId: string) => void
 }
 
+type SeverityFilter = 'all' | Strength
+
 export function RuleViolationsPanel({
   evaluation,
   seatCodes,
+  ruleLabels = {},
   timedOut = false,
   onSelectSeat,
 }: RuleViolationsPanelProps) {
+  const [severity, setSeverity] = useState<SeverityFilter>('all')
+  const [ruleFilter, setRuleFilter] = useState('all')
+  const availableRuleIds = [
+    ...new Set(evaluation?.violations.map((violation) => violation.ruleId) ?? []),
+  ]
+  const activeRuleFilter = availableRuleIds.includes(ruleFilter)
+    ? ruleFilter
+    : 'all'
+  const filteredViolations =
+    evaluation?.violations.filter((violation) => {
+      if (severity !== 'all' && violation.severity !== severity) {
+        return false
+      }
+
+      return activeRuleFilter === 'all' || violation.ruleId === activeRuleFilter
+    }) ?? []
+  const filterActive = severity !== 'all' || activeRuleFilter !== 'all'
+
   return (
     <section className="border border-line bg-surface">
       <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
@@ -54,8 +78,67 @@ export function RuleViolationsPanel({
               <span>軟成本 {evaluation.softCost}</span>
               <span>衝突 {evaluation.violationCount}</span>
             </div>
+
+            <div className="mb-3 space-y-2 border border-line bg-paper/45 p-2">
+              <div
+                aria-label="依約束強度篩選"
+                className="flex flex-wrap gap-1"
+                role="group"
+              >
+                {(
+                  [
+                    ['all', `全部 ${evaluation.violationCount}`],
+                    ['hard', `硬約束 ${evaluation.hardViolationCount}`],
+                    [
+                      'soft',
+                      `軟約束 ${evaluation.violationCount - evaluation.hardViolationCount}`,
+                    ],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    aria-pressed={severity === value}
+                    className={`border px-2 py-1 font-mono text-[9px] transition-colors ${
+                      severity === value
+                        ? 'border-accent bg-accent-soft text-accent'
+                        : 'border-line bg-surface text-muted hover:border-accent/50'
+                    }`}
+                    key={value}
+                    onClick={() => setSeverity(value)}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {availableRuleIds.length > 1 ? (
+                <select
+                  aria-label="依規則篩選"
+                  className="w-full border border-line bg-surface px-2 py-1.5 text-[11px] text-ink"
+                  onChange={(event) => setRuleFilter(event.target.value)}
+                  value={activeRuleFilter}
+                >
+                  <option value="all">所有規則</option>
+                  {availableRuleIds.map((ruleId) => (
+                    <option key={ruleId} value={ruleId}>
+                      {ruleLabels[ruleId] ?? '未命名規則'}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              {filterActive ? (
+                <p className="font-mono text-[9px] text-muted">
+                  顯示 {filteredViolations.length} / {evaluation.violationCount} 個衝突
+                </p>
+              ) : null}
+            </div>
+
+            {filteredViolations.length === 0 ? (
+              <p className="border border-line bg-paper/55 px-3 py-2 text-xs leading-5 text-muted">
+                目前篩選沒有衝突。
+              </p>
+            ) : (
             <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
-              {evaluation.violations.map((violation, index) => {
+              {filteredViolations.map((violation, index) => {
                 const seatId = violation.seatIds[0]
                 const content = (
                   <>
@@ -100,6 +183,7 @@ export function RuleViolationsPanel({
                 )
               })}
             </ul>
+            )}
           </>
         )}
       </div>

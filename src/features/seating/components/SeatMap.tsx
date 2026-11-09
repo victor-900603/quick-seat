@@ -12,6 +12,7 @@ interface SeatMapProps {
   activeSeatIds: Set<string>
   assignments: Record<string, string>
   violationSeatIds: Set<string>
+  neighborSeatIds: Set<string>
   personsById: Map<string, Person>
   lockedPersonIds: Set<string>
   display: ProjectSettings['display']
@@ -32,6 +33,7 @@ interface SeatCellProps {
   active: boolean
   locked: boolean
   violating: boolean
+  neighbor: boolean
   display: ProjectSettings['display']
   selected: boolean
   readOnly: boolean
@@ -48,6 +50,7 @@ function SeatCell({
   active,
   locked,
   violating,
+  neighbor,
   display,
   selected,
   readOnly,
@@ -86,7 +89,9 @@ function SeatCell({
     <button
       aria-label={`座位 ${code}，${person ? label || '已安排人員' : active ? '空位' : '未使用'}${
         locked ? '，已鎖定' : ''
-      }${violating ? '，有規則衝突' : ''}`}
+      }${violating ? '，有規則衝突' : ''}${
+        neighbor ? '，鄰居座位' : ''
+      }`}
       aria-pressed={selected}
       className={`relative flex items-center justify-center overflow-hidden border px-1 text-center transition-[background-color,border-color,box-shadow] ${className} ${
         violating
@@ -95,6 +100,10 @@ function SeatCell({
       } ${
         droppable.isOver
           ? 'z-10 border-accent bg-accent-soft ring-2 ring-accent ring-inset'
+          : ''
+      } ${
+        neighbor
+          ? 'shadow-[inset_0_0_0_2px_rgba(47,107,88,0.4)]'
           : ''
       } ${
         selected
@@ -108,6 +117,7 @@ function SeatCell({
             : 'cursor-pointer'
       }`}
       data-active={active}
+      data-neighbor={neighbor}
       data-over={droppable.isOver}
       data-seat={id}
       onClick={() => onSeatClick(id)}
@@ -164,6 +174,7 @@ export function SeatMap({
   activeSeatIds,
   assignments,
   violationSeatIds,
+  neighborSeatIds,
   personsById,
   lockedPersonIds,
   display,
@@ -255,6 +266,7 @@ export function SeatMap({
                   id={id}
                   key={id}
                   locked={Boolean(personId && lockedPersonIds.has(personId))}
+                  neighbor={neighborSeatIds.has(id)}
                   onSeatClick={onSeatClick}
                   person={person}
                   readOnly={readOnly}

@@ -17,11 +17,13 @@ import {
 } from 'react'
 import { useReadOnlyMode } from '../../lib/useReadOnlyMode'
 import type {
+  Adjacency,
   AllocationMode,
   AssignmentResult,
   OccupancyMode,
 } from '../../types/domain'
 import { getSeatRefs } from '../classroom/numbering'
+import { getNeighborSeatIds } from '../classroom/neighbors'
 import { useProjectStore } from '../project/projectStore'
 import { createSeed } from './allocation'
 import {
@@ -42,6 +44,7 @@ import {
 } from './optimizer'
 import { seatCollisionDetection, cursorOffsetModifier } from './seatingDnd'
 import { evaluateAssignment } from '../rules/evaluateRules'
+import { formatRuleSummary, RULE_TYPE_LABELS } from '../rules/ruleOps'
 import { RuleViolationsPanel } from '../rules/components/RuleViolationsPanel'
 import { SeatDetails } from './components/SeatDetails'
 import { SeatMap } from './components/SeatMap'
@@ -138,6 +141,10 @@ export function SeatingEditor() {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null)
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(
     null,
+  )
+  const [neighborsEnabled, setNeighborsEnabled] = useState(false)
+  const [neighborAdjacency, setNeighborAdjacency] = useState<Adjacency>(
+    () => project.settings.adjacencyDefault,
   )
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -262,6 +269,25 @@ export function SeatingEditor() {
   const selectedPerson = selectedPersonId
     ? personsById.get(selectedPersonId) ?? null
     : null
+  const violationRuleLabels = useMemo(
+    () =>
+      Object.fromEntries(
+        project.rules.map((rule) => [
+          rule.id,
+          `${RULE_TYPE_LABELS[rule.type]}：${formatRuleSummary(rule, project)}`,
+        ]),
+      ) as Record<string, string>,
+    [project],
+  )
+  const neighborSeatIds = useMemo(
+    () =>
+      new Set(
+        neighborsEnabled && selectedSeatId
+          ? getNeighborSeatIds(classroom, selectedSeatId, neighborAdjacency)
+          : [],
+      ),
+    [classroom, neighborAdjacency, neighborsEnabled, selectedSeatId],
+  )
   const assignedCount = Object.keys(assignments).length
   const canRun =
     personCount > 0 && capacityReport.capacity > 0 && !capacityReport.shortage
@@ -776,6 +802,59 @@ export function SeatingEditor() {
                 </div>
               </header>
 
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-paper/45 px-4 py-2">
+                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-ink">
+                  <input
+                    checked={neighborsEnabled}
+                    className="accent-accent"
+                    onChange={(event) =>
+                      setNeighborsEnabled(event.target.checked)
+                    }
+                    type="checkbox"
+                  />
+                  鄰居檢視
+                </label>
+                <div
+                  aria-label="鄰居範圍"
+                  className="flex items-center gap-1"
+                  role="group"
+                >
+                  <button
+                    aria-pressed={neighborAdjacency === 'orthogonal'}
+                    className={`border px-2 py-1 font-mono text-[9px] transition-colors ${
+                      neighborAdjacency === 'orthogonal'
+                        ? 'border-accent bg-accent-soft text-accent'
+                        : 'border-line bg-surface text-muted hover:border-accent/50'
+                    }`}
+                    disabled={!neighborsEnabled}
+                    onClick={() => setNeighborAdjacency('orthogonal')}
+                    type="button"
+                  >
+                    上下左右
+                  </button>
+                  <button
+                    aria-pressed={neighborAdjacency === 'all8'}
+                    className={`border px-2 py-1 font-mono text-[9px] transition-colors ${
+                      neighborAdjacency === 'all8'
+                        ? 'border-accent bg-accent-soft text-accent'
+                        : 'border-line bg-surface text-muted hover:border-accent/50'
+                    }`}
+                    disabled={!neighborsEnabled}
+                    onClick={() => setNeighborAdjacency('all8')}
+                    type="button"
+                  >
+                    含斜角
+                  </button>
+                </div>
+                <span className="font-mono text-[9px] text-muted">
+                  {neighborsEnabled
+                    ? selectedSeatId
+                      ? `${neighborSeatIds.size} 個座位鄰居`
+                      : '選取座位後標示鄰居'
+                    : '選取座位後可查看鄰居'}
+                </span>
+              </div>
+
               {personCount === 0 ? (
                 <div className="border-b border-line bg-paper/60 px-4 py-3 text-xs leading-5 text-muted">
                   名單尚無人員。請先到「名單」分頁新增或匯入學生。
@@ -798,6 +877,7 @@ export function SeatingEditor() {
                   display={display}
                   hasAssignment={Boolean(assignment)}
                   lockedPersonIds={lockedPersonIds}
+                  neighborSeatIds={neighborSeatIds}
                   onSeatClick={handleSeatClick}
                   personsById={personsById}
                   readOnly={interactionDisabled}
@@ -909,6 +989,7 @@ export function SeatingEditor() {
             <RuleViolationsPanel
               evaluation={evaluation}
               onSelectSeat={selectViolationSeat}
+              ruleLabels={violationRuleLabels}
               seatCodes={seatCodes}
               timedOut={assignment?.timedOut ?? false}
             />
@@ -917,7 +998,10 @@ export function SeatingEditor() {
               activeSeatIds={activeSeatIds}
               assignments={assignments}
               lockedPersonIds={lockedPersonIds}
+              neighborSeatIds={neighborSeatIds}
+              neighborsEnabled={neighborsEnabled}
               onClearSelection={clearSelection}
+              onSelectSeat={handleSeatClick}
               onToggleLock={handleToggleLock}
               onUnassign={handleUnassign}
               personsById={personsById}

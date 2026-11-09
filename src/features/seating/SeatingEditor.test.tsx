@@ -611,4 +611,31 @@ describe('SeatingEditor', () => {
     await user.click(violation)
     expect(seatButton('01')).toHaveAttribute('aria-pressed', 'true')
   })
+
+  it('可切換鄰居檢視並從座位詳情選取鄰居', async () => {
+    const user = userEvent.setup()
+    render(<SeatingEditor />)
+
+    await user.click(screen.getByLabelText('鄰居檢視'))
+    await user.click(seatButton('01'))
+
+    expect(seatButton('02')).toHaveAttribute('data-neighbor', 'true')
+    expect(seatButton('07')).toHaveAttribute('data-neighbor', 'true')
+    expect(seatButton('08')).toHaveAttribute('data-neighbor', 'true')
+    expect(screen.getByText('3 個座位鄰居')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: '選取鄰居座位 08' }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: '上下左右' }))
+
+    expect(seatButton('02')).toHaveAttribute('data-neighbor', 'true')
+    expect(seatButton('07')).toHaveAttribute('data-neighbor', 'true')
+    expect(seatButton('08')).toHaveAttribute('data-neighbor', 'false')
+    expect(screen.getByText('2 個座位鄰居')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: '選取鄰居座位 07' }))
+    expect(seatButton('07')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('button', { name: '選取鄰居座位 07' })).toBeNull()
+  })
 })

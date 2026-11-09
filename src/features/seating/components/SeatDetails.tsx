@@ -8,9 +8,12 @@ interface SeatDetailsProps {
   personsById: Map<string, Person>
   lockedPersonIds: Set<string>
   activeSeatIds: Set<string>
+  neighborSeatIds: Set<string>
+  neighborsEnabled: boolean
   readOnly: boolean
   onToggleLock: (personId: string) => void
   onUnassign: (personId: string) => void
+  onSelectSeat: (seatId: string) => void
   onClearSelection: () => void
 }
 
@@ -25,9 +28,12 @@ export function SeatDetails({
   personsById,
   lockedPersonIds,
   activeSeatIds,
+  neighborSeatIds,
+  neighborsEnabled,
   readOnly,
   onToggleLock,
   onUnassign,
+  onSelectSeat,
   onClearSelection,
 }: SeatDetailsProps) {
   if (selectedPerson) {
@@ -80,6 +86,20 @@ export function SeatDetails({
   const person = personId ? personsById.get(personId) ?? null : null
   const active = activeSeatIds.has(selectedSeatId)
   const locked = Boolean(personId && lockedPersonIds.has(personId))
+  const neighbors = [...neighborSeatIds].flatMap((neighborId) => {
+    const neighborRef = refsById.get(neighborId)
+
+    if (!neighborRef) {
+      return []
+    }
+
+    const neighborPersonId = assignments[neighborId]
+    const neighborPerson = neighborPersonId
+      ? personsById.get(neighborPersonId) ?? null
+      : null
+
+    return [{ ref: neighborRef, person: neighborPerson }]
+  })
 
   return (
     <section className="border border-line bg-surface">
@@ -158,6 +178,48 @@ export function SeatDetails({
             ) : null}
           </>
         )}
+
+        {neighborsEnabled ? (
+          <div className="mt-3 border-t border-line pt-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="font-mono text-[9px] tracking-[0.12em] text-muted">
+                鄰居座位
+              </p>
+              <span className="font-mono text-[9px] text-muted">
+                {neighbors.length} 個
+              </span>
+            </div>
+            {neighbors.length > 0 ? (
+              <ul className="mt-2 grid gap-1.5">
+                {neighbors.map((neighbor) => (
+                  <li key={neighbor.ref.id}>
+                    <button
+                      aria-label={`選取鄰居座位 ${neighbor.ref.code}`}
+                      className="flex w-full items-center justify-between gap-2 border border-line bg-paper/55 px-2.5 py-1.5 text-left text-[11px] text-ink transition-colors hover:border-accent/60 hover:bg-accent-soft/45"
+                      onClick={() => onSelectSeat(neighbor.ref.id)}
+                      type="button"
+                    >
+                      <span className="font-mono text-[10px] text-muted">
+                        {neighbor.ref.code}
+                      </span>
+                      <span className="min-w-0 truncate">
+                        {neighbor.person
+                          ? neighbor.person.name
+                          : activeSeatIds.has(neighbor.ref.id)
+                            ? '空位'
+                            : '未使用'}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-[11px] leading-5 text-muted">
+                此座位沒有其他座位鄰居。
+              </p>
+            )}
+          </div>
+        ) : null}
       </div>
     </section>
   )
