@@ -116,6 +116,7 @@ export function SeatingEditor() {
       },
   )
   const [seed, setSeed] = useState(() => assignment?.seed ?? createSeed())
+  const [optimize, setOptimize] = useState(true)
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null)
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(
     null,
@@ -159,6 +160,13 @@ export function SeatingEditor() {
       project.rules.flatMap((rule) =>
         rule.type === 'pin' && rule.enabled ? [rule.seatId] : [],
       ),
+    [project.rules],
+  )
+  const activeRuleCount = useMemo(
+    () =>
+      project.rules.filter(
+        (rule) => rule.enabled && rule.type !== 'pin',
+      ).length,
     [project.rules],
   )
   const fill = allocation.kind === 'ordered' ? allocation.fill : 'row-major'
@@ -253,7 +261,13 @@ export function SeatingEditor() {
         }`
 
   const handleRun = (partial = false) => {
-    const outcome = runSeating({ occupancy, allocation, seed, partial })
+    const outcome = runSeating({
+      occupancy,
+      allocation,
+      seed,
+      partial,
+      optimize,
+    })
 
     if (!outcome.ok) {
       setNotice({ tone: 'error', message: outcome.message })
@@ -262,9 +276,16 @@ export function SeatingEditor() {
 
     setSelectedSeatId(null)
     setSelectedPersonId(null)
+    const conflictCount = outcome.result.violations.length
     setNotice({
       tone: 'success',
-      message: `已安排 ${outcome.assignedCount} 位，未分配 ${outcome.unassignedCount} 位。`,
+      message: `已安排 ${outcome.assignedCount} 位，未分配 ${
+        outcome.unassignedCount
+      } 位。${
+        conflictCount > 0
+          ? `仍有 ${outcome.result.hardViolationCount} 個硬約束與 ${conflictCount} 個規則衝突。`
+          : '目前符合所有啟用中的規則。'
+      }${outcome.result.timedOut ? ' 最佳化已達時間上限。' : ''}`,
     })
   }
 
@@ -679,6 +700,7 @@ export function SeatingEditor() {
 
           <aside className="space-y-5">
             <SeatingControls
+              activeRuleCount={activeRuleCount}
               allocation={allocation}
               canExpand={Boolean(expandedSize)}
               canRun={canRun}
@@ -694,9 +716,11 @@ export function SeatingEditor() {
               onGenerateSeed={() => setSeed(createSeed())}
               onMethodChange={setMethod}
               onOccupancyChange={setOccupancy}
+              onOptimizeChange={setOptimize}
               onPartialRun={() => handleRun(true)}
               onRun={() => handleRun()}
               onSeedChange={setSeed}
+              optimize={optimize}
               readOnly={readOnly}
               seed={seed}
             />
@@ -705,6 +729,7 @@ export function SeatingEditor() {
               evaluation={evaluation}
               onSelectSeat={selectViolationSeat}
               seatCodes={seatCodes}
+              timedOut={assignment?.timedOut ?? false}
             />
 
             <SeatDetails

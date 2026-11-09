@@ -3,12 +3,14 @@ import type { RuleEvaluation } from '../evaluateRules'
 interface RuleViolationsPanelProps {
   evaluation: RuleEvaluation | null
   seatCodes: Map<string, string>
+  timedOut?: boolean
   onSelectSeat: (seatId: string) => void
 }
 
 export function RuleViolationsPanel({
   evaluation,
   seatCodes,
+  timedOut = false,
   onSelectSeat,
 }: RuleViolationsPanelProps) {
   return (
@@ -28,6 +30,11 @@ export function RuleViolationsPanel({
       </header>
 
       <div className="p-4">
+        {timedOut ? (
+          <p className="mb-3 border border-mark/35 bg-mark/5 px-3 py-2 text-[11px] leading-5 text-ink">
+            最佳化已達時間上限，結果可能仍含衝突。可再次排座，或減少規則後重試。
+          </p>
+        ) : null}
         {!evaluation ? (
           <p className="text-xs leading-6 text-muted">
             排座後會在這裡顯示硬約束、軟約束與座位衝突。

@@ -526,6 +526,49 @@ describe('SeatingEditor', () => {
     ).toBeDisabled()
   })
 
+  it('有規則時可切換規則最佳化並傳入排座設定', async () => {
+    const user = userEvent.setup()
+    const store = useProjectStore.getState()
+    const tagId = store.addTag({
+      name: '分組',
+      type: 'enum',
+      options: ['A'],
+    })!
+    const firstId = store.addPerson({ name: '林品妤', studentNo: '01' })!
+    const secondId = useProjectStore.getState().addPerson({
+      name: '陳柏宇',
+      studentNo: '02',
+    })!
+    useProjectStore.getState().setPersonsTag(
+      [firstId, secondId],
+      tagId,
+      'A',
+    )
+    useProjectStore.getState().addRule({
+      ...createRule('together', { tagId }),
+      values: ['A'],
+    })
+    const runSpy = vi.spyOn(
+      useProjectStore.getState(),
+      'runSeating',
+    )
+
+    render(<SeatingEditor />)
+
+    const optimize = screen.getByRole('checkbox', {
+      name: /依 1 條可調整規則最佳化/,
+    })
+    expect(optimize).toBeChecked()
+
+    await user.click(optimize)
+    expect(optimize).not.toBeChecked()
+    await user.click(screen.getByRole('button', { name: '開始排座' }))
+
+    expect(runSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ optimize: false }),
+    )
+  })
+
   it('顯示規則衝突並可點擊定位座位', async () => {
     const user = userEvent.setup()
     const store = useProjectStore.getState()

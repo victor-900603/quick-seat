@@ -25,6 +25,9 @@ interface SeatingControlsProps {
   canRun: boolean
   hasAssignment: boolean
   canExpand: boolean
+  optimize: boolean
+  onOptimizeChange: (optimize: boolean) => void
+  activeRuleCount: number
   onRun: () => void
   onPartialRun: () => void
   onExpand: () => void
@@ -79,6 +82,9 @@ export function SeatingControls({
   canRun,
   hasAssignment,
   canExpand,
+  optimize,
+  onOptimizeChange,
+  activeRuleCount,
   onRun,
   onPartialRun,
   onExpand,
@@ -293,6 +299,27 @@ export function SeatingControls({
             手動排座不需要排序或隨機設定。從未分配人員選取學生，再點選座位即可開始；也可以直接拖曳名牌。
           </div>
         )}
+
+        {method === 'auto' && activeRuleCount > 0 ? (
+          <fieldset disabled={readOnly}>
+            <legend className="text-xs font-medium text-ink">規則最佳化</legend>
+            <label className="mt-2 flex cursor-pointer items-start gap-2 text-[11px] leading-5 text-muted">
+              <input
+                checked={optimize}
+                className="mt-0.5 accent-[#2f6b58]"
+                disabled={readOnly}
+                onChange={(event) => onOptimizeChange(event.target.checked)}
+                type="checkbox"
+              />
+              <span>
+                依 {activeRuleCount} 條可調整規則最佳化
+                <span className="mt-0.5 block text-[10px] leading-4 text-muted/80">
+                  重新排座時會嘗試降低衝突；規則越多，計算時間越長。
+                </span>
+              </span>
+            </label>
+          </fieldset>
+        ) : null}
 
         <fieldset disabled={readOnly}>
           <legend className="text-xs font-medium text-ink">座位標示</legend>
