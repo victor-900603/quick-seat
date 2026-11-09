@@ -286,7 +286,7 @@ export function ExportEditor() {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_370px]">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <ExportPreviewPanel
           assignedCount={snapshot.assignedCount}
           busy={busy}

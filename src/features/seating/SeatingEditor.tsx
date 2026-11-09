@@ -7,6 +7,8 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
+import { InspectorTabs } from '../../components/InspectorTabs'
+import { PageHeader } from '../../components/PageHeader'
 import {
   useCallback,
   useEffect,
@@ -141,6 +143,9 @@ export function SeatingEditor() {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null)
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(
     null,
+  )
+  const [inspectorTab, setInspectorTab] = useState<'settings' | 'seat' | 'rules'>(
+    'settings',
   )
   const [neighborsEnabled, setNeighborsEnabled] = useState(false)
   const [neighborAdjacency, setNeighborAdjacency] = useState<Adjacency>(
@@ -525,6 +530,7 @@ export function SeatingEditor() {
   const selectViolationSeat = (seatId: string) => {
     setSelectedSeatId(seatId)
     setSelectedPersonId(null)
+    setInspectorTab('rules')
   }
 
   const handleMapBackgroundClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -582,6 +588,7 @@ export function SeatingEditor() {
     if (readOnly) {
       setSelectedSeatId((current) => (current === seatId ? null : seatId))
       setSelectedPersonId(null)
+      setInspectorTab('seat')
       return
     }
 
@@ -596,6 +603,7 @@ export function SeatingEditor() {
     }
 
     setSelectedSeatId(seatId)
+    setInspectorTab('seat')
   }
 
   const handleUnassignedSelect = (personId: string) => {
@@ -615,6 +623,7 @@ export function SeatingEditor() {
 
     setSelectedPersonId((current) => (current === personId ? null : personId))
     setSelectedSeatId(null)
+    setInspectorTab('seat')
   }
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -686,31 +695,13 @@ export function SeatingEditor() {
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="font-mono text-[10px] tracking-[0.25em] text-mark">
-            STEP 04 / SEATING
-          </p>
-          <h2 className="mt-1 font-display text-2xl tracking-wide text-ink">
-            安排座位
-          </h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-            自動分配或直接手動安排，再拖曳微調、鎖定人員，或將未分配人員補進空位。
-          </p>
-        </div>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-right sm:grid-cols-4">
-          {stats.map((stat) => (
-            <div key={stat.label}>
-              <dt className="font-mono text-[9px] tracking-[0.12em] text-muted">
-                {stat.label}
-              </dt>
-              <dd className="font-display text-xl leading-tight text-ink">
-                {stat.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </header>
+      <PageHeader
+        description="自動分配或直接手動安排，再拖曳微調、鎖定人員，或將未分配人員補進空位。"
+        kicker="SEATING"
+        stats={stats}
+        step="04"
+        title="安排座位"
+      />
 
       {readOnly ? (
         <p className="mb-4 border border-line bg-surface px-4 py-3 text-xs leading-5 text-muted">
@@ -764,7 +755,7 @@ export function SeatingEditor() {
         onDragStart={handleDragStart}
         sensors={sensors}
       >
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-5">
             <section className="border border-line bg-surface">
               <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
@@ -955,60 +946,86 @@ export function SeatingEditor() {
               </section>
             ) : null}
 
-            <fieldset
-              className="min-w-0 border-0 p-0 disabled:opacity-60"
-              disabled={optimizing}
-            >
-              <SeatingControls
-                activeRuleCount={activeRuleCount}
-                allocation={allocation}
-                canExpand={Boolean(expandedSize)}
-                canRun={canRun}
-                capacityReport={capacityReport}
-                display={display}
-                hasAssignment={Boolean(assignment)}
-                method={method}
-                occupancy={occupancy}
-                onAllocationChange={setAllocation}
-                onClear={handleClear}
-                onDisplayChange={setDisplay}
-                onExpand={handleExpand}
-                onGenerateSeed={() => setSeed(createSeed())}
-                onMethodChange={setMethod}
-                onOccupancyChange={setOccupancy}
-                onOptimizeChange={setOptimize}
-                onPartialRun={() => handleRun(true)}
-                onRun={() => handleRun()}
-                onSeedChange={setSeed}
-                optimize={optimize}
-                readOnly={readOnly}
-                seed={seed}
-              />
-            </fieldset>
-
-            <RuleViolationsPanel
-              evaluation={evaluation}
-              onSelectSeat={selectViolationSeat}
-              ruleLabels={violationRuleLabels}
-              seatCodes={seatCodes}
-              timedOut={assignment?.timedOut ?? false}
-            />
-
-            <SeatDetails
-              activeSeatIds={activeSeatIds}
-              assignments={assignments}
-              lockedPersonIds={lockedPersonIds}
-              neighborSeatIds={neighborSeatIds}
-              neighborsEnabled={neighborsEnabled}
-              onClearSelection={clearSelection}
-              onSelectSeat={handleSeatClick}
-              onToggleLock={handleToggleLock}
-              onUnassign={handleUnassign}
-              personsById={personsById}
-              readOnly={interactionDisabled}
-              refsById={refsById}
-              selectedPerson={selectedPerson}
-              selectedSeatId={selectedSeatId}
+            <InspectorTabs
+              ariaLabel="排座屬性分頁"
+              defaultValue="settings"
+              onValueChange={(value) =>
+                setInspectorTab(value as 'settings' | 'seat' | 'rules')
+              }
+              tabs={[
+                {
+                  value: 'settings',
+                  label: '排座',
+                  content: (
+                    <fieldset
+                      className="min-w-0 border-0 p-0 disabled:opacity-60"
+                      disabled={optimizing}
+                    >
+                      <SeatingControls
+                        activeRuleCount={activeRuleCount}
+                        allocation={allocation}
+                        canExpand={Boolean(expandedSize)}
+                        canRun={canRun}
+                        capacityReport={capacityReport}
+                        display={display}
+                        hasAssignment={Boolean(assignment)}
+                        method={method}
+                        occupancy={occupancy}
+                        onAllocationChange={setAllocation}
+                        onClear={handleClear}
+                        onDisplayChange={setDisplay}
+                        onExpand={handleExpand}
+                        onGenerateSeed={() => setSeed(createSeed())}
+                        onMethodChange={setMethod}
+                        onOccupancyChange={setOccupancy}
+                        onOptimizeChange={setOptimize}
+                        onPartialRun={() => handleRun(true)}
+                        onRun={() => handleRun()}
+                        onSeedChange={setSeed}
+                        optimize={optimize}
+                        readOnly={readOnly}
+                        seed={seed}
+                      />
+                    </fieldset>
+                  ),
+                },
+                {
+                  value: 'seat',
+                  label: '座位',
+                  content: (
+                    <SeatDetails
+                      activeSeatIds={activeSeatIds}
+                      assignments={assignments}
+                      lockedPersonIds={lockedPersonIds}
+                      neighborSeatIds={neighborSeatIds}
+                      neighborsEnabled={neighborsEnabled}
+                      onClearSelection={clearSelection}
+                      onSelectSeat={handleSeatClick}
+                      onToggleLock={handleToggleLock}
+                      onUnassign={handleUnassign}
+                      personsById={personsById}
+                      readOnly={interactionDisabled}
+                      refsById={refsById}
+                      selectedPerson={selectedPerson}
+                      selectedSeatId={selectedSeatId}
+                    />
+                  ),
+                },
+                {
+                  value: 'rules',
+                  label: '規則',
+                  content: (
+                    <RuleViolationsPanel
+                      evaluation={evaluation}
+                      onSelectSeat={selectViolationSeat}
+                      ruleLabels={violationRuleLabels}
+                      seatCodes={seatCodes}
+                      timedOut={assignment?.timedOut ?? false}
+                    />
+                  ),
+                },
+              ]}
+              value={inspectorTab}
             />
           </aside>
         </div>

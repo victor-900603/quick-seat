@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { PageHeader } from '../../components/PageHeader'
 import type { CellType } from '../../types/domain'
 import { useProjectStore } from '../project/projectStore'
 import { ClassroomGrid } from './components/ClassroomGrid'
@@ -292,20 +293,8 @@ export function ClassroomEditor() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-7 sm:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-[9px] tracking-[0.24em] text-muted">
-            CLASSROOM / LAYOUT
-          </p>
-          <h2 className="font-display text-2xl tracking-wide text-ink sm:text-3xl">
-            教室配置
-          </h2>
-          <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted">
-            在方格紙上決定座位、走道與禁坐區。走道以整列或整欄建立，筆刷拖曳與矩形填入都會合併為單一步復原。
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-stretch gap-2">
+      <PageHeader
+        actions={
           <button
             aria-haspopup="dialog"
             className="border border-line bg-surface px-3 py-2 text-xs text-ink transition-colors hover:border-accent hover:text-accent"
@@ -314,29 +303,17 @@ export function ClassroomEditor() {
           >
             分享教室
           </button>
-          <div className="flex border border-line bg-surface">
-            {[
-              { label: '座位', value: counts.seat },
-              { label: '走道', value: counts.aisle },
-              { label: '禁坐', value: counts.blocked },
-            ].map((stat, index) => (
-              <div
-                className={`px-4 py-2 text-right ${
-                  index > 0 ? 'border-l border-line' : ''
-                }`}
-                key={stat.label}
-              >
-                <p className="font-mono text-[8px] tracking-[0.16em] text-muted">
-                  {stat.label}
-                </p>
-                <p className="font-display text-xl leading-tight text-ink">
-                  {stat.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+        }
+        description="在方格紙上決定座位、走道與禁坐區。走道以整列或整欄建立，筆刷拖曳與矩形填入都會合併為單一步復原。"
+        kicker="CLASSROOM"
+        stats={[
+          { label: '座位', value: counts.seat },
+          { label: '走道', value: counts.aisle },
+          { label: '禁坐', value: counts.blocked },
+        ]}
+        step="01"
+        title="教室配置"
+      />
 
       {readOnly ? (
         <div
@@ -347,7 +324,7 @@ export function ClassroomEditor() {
         </div>
       ) : null}
 
-      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_310px]">
+      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="min-w-0 border border-line bg-surface">
           <EditorToolbar
             disabled={readOnly}

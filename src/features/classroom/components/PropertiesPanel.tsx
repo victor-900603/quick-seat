@@ -146,6 +146,7 @@ export function PropertiesPanel({
   const [lastPattern, setLastPattern] = useState(numbering.pattern)
   const [codeDraft, setCodeDraft] = useState('')
   const [lastCodeKey, setLastCodeKey] = useState('')
+  const [tab, setTab] = useState<'cell' | 'numbering' | 'size'>('cell')
 
   if (lastPattern !== numbering.pattern) {
     setLastPattern(numbering.pattern)
@@ -183,10 +184,36 @@ export function PropertiesPanel({
         <p className="font-display text-base text-ink">教室屬性</p>
       </div>
 
-      <Section
-        hint={selected ? `R${selected.row + 1} C${selected.col + 1}` : '未選取'}
-        title="選取的格子"
+      <nav
+        aria-label="教室屬性分頁"
+        className="grid grid-cols-3 border-t border-line bg-board/[0.02]"
       >
+        {[
+          { value: 'cell', label: '格子' },
+          { value: 'numbering', label: '編號' },
+          { value: 'size', label: '尺寸' },
+        ].map((item) => (
+          <button
+            aria-pressed={tab === item.value}
+            className={`border-b-2 px-2 py-2.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40 ${
+              tab === item.value
+                ? 'border-accent bg-surface text-accent'
+                : 'border-transparent text-muted hover:text-ink'
+            }`}
+            key={item.value}
+            onClick={() => setTab(item.value as typeof tab)}
+            type="button"
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === 'cell' ? (
+        <Section
+          hint={selected ? `R${selected.row + 1} C${selected.col + 1}` : '未選取'}
+          title="選取的格子"
+        >
         {selected ? (
           <div className="space-y-3">
             <div className="flex items-baseline justify-between border border-line bg-paper px-3 py-2">
@@ -271,9 +298,11 @@ export function PropertiesPanel({
             在畫布上點選格子，即可調整型別與座位編號。
           </p>
         )}
-      </Section>
+        </Section>
+      ) : null}
 
-      <Section hint="只計座位" title="座位編號">
+      {tab === 'numbering' ? (
+        <Section hint="只計座位" title="座位編號">
         <div className="space-y-3">
           <div>
             <label
@@ -368,9 +397,12 @@ export function PropertiesPanel({
             </div>
           </div>
         </div>
-      </Section>
+        </Section>
+      ) : null}
 
-      <Section hint="上限 60 × 60" title="教室尺寸">
+      {tab === 'size' ? (
+        <>
+          <Section hint="上限 60 × 60" title="教室尺寸">
         <div className="grid grid-cols-2 gap-2">
           <NumberField
             disabled={disabled}
@@ -409,7 +441,9 @@ export function PropertiesPanel({
           <span>40</span>
           <span>64</span>
         </div>
-      </Section>
+          </Section>
+        </>
+      ) : null}
     </aside>
   )
 }

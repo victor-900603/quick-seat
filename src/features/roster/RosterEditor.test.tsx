@@ -182,6 +182,7 @@ describe('RosterEditor', () => {
 
     render(<RosterEditor />)
     await user.click(personRow('林品妤'))
+    await user.click(screen.getByRole('tab', { name: '標籤' }))
     await user.click(screen.getByRole('button', { name: '新增標籤' }))
     await user.type(screen.getByLabelText('名稱'), '組別')
     await user.type(screen.getByLabelText('選項'), 'A、B')
@@ -192,6 +193,7 @@ describe('RosterEditor', () => {
     expect(tag).toMatchObject({ name: '組別', options: ['A', 'B'] })
     expect(screen.getByText('已建立標籤「組別」。')).toBeVisible()
 
+    await user.click(screen.getByRole('tab', { name: '人員' }))
     await user.selectOptions(screen.getByLabelText('組別'), 'A')
     await user.click(screen.getByRole('button', { name: '儲存變更' }))
 
@@ -199,6 +201,7 @@ describe('RosterEditor', () => {
       useProjectStore.getState().project.roster.persons[0].tags[tag.id],
     ).toBe('A')
 
+    await user.click(screen.getByRole('tab', { name: '標籤' }))
     await user.click(screen.getByRole('button', { name: '編輯標籤 組別' }))
     await user.clear(screen.getByLabelText('名稱'))
     await user.type(screen.getByLabelText('名稱'), '小組')
@@ -409,6 +412,7 @@ describe('RosterEditor', () => {
     ).toBeVisible()
     expect(screen.getByRole('button', { name: '匯入名單' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '新增人員' })).toBeDisabled()
+    await userEvent.setup().click(screen.getByRole('tab', { name: '標籤' }))
     expect(screen.getByRole('button', { name: '新增標籤' })).toBeDisabled()
     expect(screen.queryByLabelText('選取 林品妤')).not.toBeInTheDocument()
 

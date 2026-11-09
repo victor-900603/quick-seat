@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { InspectorTabs } from '../../components/InspectorTabs'
+import { PageHeader } from '../../components/PageHeader'
 import { useReadOnlyMode } from '../../lib/useReadOnlyMode'
 import type { Person } from '../../types/domain'
 import { useProjectStore } from '../project/projectStore'
@@ -236,41 +238,17 @@ export function RosterEditor() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-7 sm:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-[9px] tracking-[0.24em] text-muted">
-            ROSTER / STUDENTS
-          </p>
-          <h2 className="font-display text-2xl tracking-wide text-ink sm:text-3xl">
-            學生名單
-          </h2>
-          <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted">
-            匯入試算表並確認欄位映射，再用標籤描述分組、需求與其他排座條件。
-          </p>
-        </div>
-
-        <div className="flex border border-line bg-surface">
-          {[
-            { label: '人員', value: roster.persons.length },
-            { label: '標籤', value: roster.tags.length },
-            { label: '額外欄位', value: roster.extraColumns.length },
-          ].map((stat, index) => (
-            <div
-              className={`px-4 py-2 text-right ${
-                index > 0 ? 'border-l border-line' : ''
-              }`}
-              key={stat.label}
-            >
-              <p className="font-mono text-[8px] tracking-[0.16em] text-muted">
-                {stat.label}
-              </p>
-              <p className="font-display text-xl leading-tight text-ink">
-                {stat.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        description="匯入試算表並確認欄位映射，再用標籤描述分組、需求與其他排座條件。"
+        kicker="ROSTER"
+        stats={[
+          { label: '人員', value: roster.persons.length },
+          { label: '標籤', value: roster.tags.length },
+          { label: '額外欄位', value: roster.extraColumns.length },
+        ]}
+        step="02"
+        title="學生名單"
+      />
 
       {readOnly ? (
         <div
@@ -281,7 +259,7 @@ export function RosterEditor() {
         </div>
       ) : null}
 
-      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
+      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="min-w-0 border border-line bg-surface">
           <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
             <button
@@ -387,21 +365,34 @@ export function RosterEditor() {
           </div>
         </section>
 
-        <div className="space-y-5">
-          <PersonPanel
-            creating={creating}
-            disabled={readOnly}
-            extraColumns={roster.extraColumns}
-            key={creating ? 'new' : (selectedPerson?.id ?? 'empty')}
-            onCreate={handleCreate}
-            onDelete={handleDelete}
-            onDirtyChange={setPersonDirty}
-            onUpdate={handleUpdate}
-            person={selectedPerson}
-            tags={roster.tags}
-          />
-          <TagPanel
-            disabled={readOnly}
+        <InspectorTabs
+          ariaLabel="名單設定"
+          defaultValue="person"
+          tabs={[
+            {
+              value: 'person',
+              label: '人員',
+              content: (
+                <PersonPanel
+                  creating={creating}
+                  disabled={readOnly}
+                  extraColumns={roster.extraColumns}
+                  key={creating ? 'new' : (selectedPerson?.id ?? 'empty')}
+                  onCreate={handleCreate}
+                  onDelete={handleDelete}
+                  onDirtyChange={setPersonDirty}
+                  onUpdate={handleUpdate}
+                  person={selectedPerson}
+                  tags={roster.tags}
+                />
+              ),
+            },
+            {
+              value: 'tags',
+              label: '標籤',
+              content: (
+                <TagPanel
+                  disabled={readOnly}
             onAdd={(input) => {
               const tagId = addTag(input)
 
@@ -426,8 +417,11 @@ export function RosterEditor() {
             }}
             personCounts={personCounts}
             tags={roster.tags}
-          />
-        </div>
+                  />
+                ),
+              },
+            ]}
+        />
       </div>
     </div>
   )

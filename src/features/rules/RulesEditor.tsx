@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { PageHeader } from '../../components/PageHeader'
 import { useReadOnlyMode } from '../../lib/useReadOnlyMode'
 import type { Rule } from '../../types/domain'
 import { getSeatRefs } from '../classroom/numbering'
@@ -139,31 +140,13 @@ export function RulesEditor() {
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="font-mono text-[10px] tracking-[0.25em] text-mark">
-            STEP 03 / RULES
-          </p>
-          <h2 className="mt-1 font-display text-2xl tracking-wide text-ink">
-            排座規則
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            用規則卡描述分開、同組、位置、避開與固定座位，並即時檢查現有座位圖的衝突。
-          </p>
-        </div>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-right sm:grid-cols-4">
-          {stats.map((stat) => (
-            <div key={stat.label}>
-              <dt className="font-mono text-[9px] tracking-[0.12em] text-muted">
-                {stat.label}
-              </dt>
-              <dd className="font-display text-xl leading-tight text-ink">
-                {stat.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </header>
+      <PageHeader
+        description="用規則卡描述分開、同組、位置、避開與固定座位，並即時檢查現有座位圖的衝突。"
+        kicker="RULES"
+        stats={stats}
+        step="03"
+        title="排座規則"
+      />
 
       {readOnly ? (
         <p className="mb-4 border border-line bg-surface px-4 py-3 text-xs leading-5 text-muted">
@@ -208,7 +191,7 @@ export function RulesEditor() {
         </div>
       ) : null}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>

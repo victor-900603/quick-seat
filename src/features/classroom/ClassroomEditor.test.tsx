@@ -250,6 +250,8 @@ describe('ClassroomEditor', () => {
     const user = userEvent.setup()
     render(<ClassroomEditor />)
 
+    await user.click(screen.getByRole('button', { name: '編號' }))
+
     const pad = screen.getByRole('textbox', { name: '補零位數' })
 
     await user.clear(pad)
@@ -292,6 +294,7 @@ describe('ClassroomEditor', () => {
       'Z9',
     )
     await user.click(screen.getByRole('button', { name: '套用' }))
+    await user.click(screen.getByRole('button', { name: '尺寸' }))
 
     const cols = screen.getByRole('textbox', { name: '欄數' })
 

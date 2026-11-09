@@ -93,6 +93,7 @@ describe('SeatingEditor', () => {
       screen.queryByRole('button', { name: '選取未分配人員 林品妤' }),
     ).not.toBeInTheDocument()
 
+    await user.click(screen.getByRole('tab', { name: '排座' }))
     await user.click(screen.getByRole('button', { name: '自動排座' }))
     expect(screen.getByText('人員分配方式')).toBeVisible()
   })
@@ -600,6 +601,7 @@ describe('SeatingEditor', () => {
       })
     })
 
+    await user.click(screen.getByRole('tab', { name: '規則' }))
     expect(screen.getByText('規則衝突')).toBeVisible()
     expect(screen.getByText('衝突 1')).toBeVisible()
     const violation = screen.getByRole('button', {
