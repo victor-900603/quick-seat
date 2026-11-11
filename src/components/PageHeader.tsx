@@ -25,15 +25,15 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
+    <header className="mb-5 flex flex-wrap items-end justify-between gap-5 border-b border-line pb-5">
       <div className="min-w-0">
-        <p className="font-mono text-[9px] tracking-[0.24em] text-muted">
+        <p className="font-mono text-[9px] tracking-[0.24em] text-mark">
           STEP {step} / {kicker}
         </p>
-        <h2 className="mt-1 font-display text-2xl tracking-wide text-ink sm:text-3xl">
+        <h2 className="mt-1 font-display text-[26px] tracking-wide text-ink sm:text-3xl">
           {title}
         </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
           {description}
         </p>
       </div>
@@ -44,14 +44,14 @@ export function PageHeader({
           {stats ? (
             <dl
               aria-label={statsLabel}
-              className="grid grid-cols-2 gap-x-6 gap-y-2 text-right sm:grid-cols-4"
+              className="grid grid-cols-2 gap-x-5 gap-y-3 border border-line bg-surface/75 px-4 py-3 sm:grid-cols-4"
             >
               {stats.map((stat) => (
-                <div key={stat.label}>
+                <div className="min-w-16" key={stat.label}>
                   <dt className="font-mono text-[9px] tracking-[0.12em] text-muted">
                     {stat.label}
                   </dt>
-                  <dd className="font-display text-xl leading-tight text-ink">
+                  <dd className="mt-0.5 font-display text-xl leading-tight text-ink">
                     {stat.value}
                   </dd>
                 </div>
