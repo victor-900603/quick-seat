@@ -355,8 +355,12 @@ export function ClassroomEditor() {
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-surface px-4 py-2.5">
-            <p className="font-mono text-[9px] tracking-[0.08em] text-muted">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-surface/95 px-4 py-3">
+            <p className="flex items-center gap-2 font-mono text-[9px] tracking-[0.08em] text-muted">
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent/70"
+              />
               {visibleHover ? (
                 <>
                   第 {visibleHover.row + 1} 列 · 第 {visibleHover.col + 1} 欄 ·{' '}
@@ -367,15 +371,15 @@ export function ClassroomEditor() {
                 '將游標移到格子上查看座標'
               )}
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-1.5">
               {LEGEND.map((item) => (
                 <span
-                  className="flex items-center gap-1.5 font-mono text-[8px] tracking-[0.08em] text-muted"
+                  className="flex items-center gap-1.5 border border-line/70 bg-paper/55 px-1.5 py-1 font-mono text-[8px] tracking-[0.08em] text-muted"
                   key={item.type}
                 >
                   <span
                     aria-hidden="true"
-                    className={`h-2.5 w-2.5 border ${item.className}`}
+                    className={`h-2.5 w-2.5 rounded-[1px] border ${item.className}`}
                   />
                   {CELL_TYPE_LABELS[item.type]}
                 </span>
