@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { PageHeader } from '../../../components/PageHeader'
 
 export interface ExportStat {
@@ -5,9 +6,16 @@ export interface ExportStat {
   value: string | number
 }
 
-export function ExportHeader({ stats }: { stats: ExportStat[] }) {
+export function ExportHeader({
+  actions,
+  stats,
+}: {
+  actions?: ReactNode
+  stats: ExportStat[]
+}) {
   return (
     <PageHeader
+      actions={actions}
       description="先在左側確認列印結果，再輸出座位表或下載完整專案備份。"
       kicker="EXPORT"
       stats={stats}

@@ -26,6 +26,8 @@ import { buildRuleReport } from './ruleReport'
 import { createWorkbookBlob } from './workbook'
 import { loadExportOptions, saveExportOptions } from './exportPreferences'
 import { ExportHeader } from './components/ExportHeader'
+import { ExportTemplateDialog } from '../templates/ExportTemplateDialog'
+import { applyExportTemplate } from '../templates/exportTemplates'
 import { ExportPreviewPanel } from './components/ExportPreviewPanel'
 import { ExportSettingsPanel } from './components/ExportSettingsPanel'
 import { ProjectFilePanel } from './components/ProjectFilePanel'
@@ -49,6 +51,7 @@ export function ExportEditor() {
   const [options, setOptions] = useState<ExportContentOptions>(
     loadExportOptions,
   )
+  const [templateOpen, setTemplateOpen] = useState(false)
   const closePrintPreview = useCallback(() => setPrintHtml(null), [])
   const closeFullPreview = useCallback(() => setShowFullPreview(false), [])
   const updateOptions = (patch: Partial<ExportContentOptions>) => {
@@ -245,7 +248,32 @@ export function ExportEditor() {
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-8">
-      <ExportHeader stats={stats} />
+      <ExportHeader
+        actions={
+          <button
+            aria-haspopup="dialog"
+            className="border border-line bg-surface px-3 py-2 text-xs text-ink transition-colors hover:border-accent hover:text-accent"
+            onClick={() => setTemplateOpen(true)}
+            type="button"
+          >
+            匯出範本
+          </button>
+        }
+        stats={stats}
+      />
+
+      {templateOpen ? (
+        <ExportTemplateDialog
+          onApply={(template) => {
+            setOptions((current) =>
+              applyExportTemplate(current, template),
+            )
+            setTemplateOpen(false)
+          }}
+          onClose={() => setTemplateOpen(false)}
+          readOnly={readOnly}
+        />
+      ) : null}
 
       {readOnly ? (
         <p className="mb-4 border border-line bg-surface px-4 py-3 text-xs leading-5 text-muted">
