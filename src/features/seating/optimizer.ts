@@ -1,5 +1,9 @@
 import type { Project } from '../../types/domain'
-import { evaluateAssignment } from '../rules/evaluateRules'
+import {
+  createRuleEvaluationContext,
+  evaluateAssignmentWithContext,
+  type RuleEvaluationContext,
+} from '../rules/evaluateRules'
 import { hashSeed, mulberry32 } from './allocation'
 
 export interface SeatingOptimizerOptions {
@@ -58,11 +62,11 @@ const TIME_CHECK_INTERVAL = 32
 const PROGRESS_INTERVAL_MS = 100
 
 function scoreAssignment(
-  project: Project,
+  context: RuleEvaluationContext,
   assignments: Record<string, string>,
   unassignedPersonIds: string[],
 ): Score {
-  const evaluation = evaluateAssignment(project, {
+  const evaluation = evaluateAssignmentWithContext(context, {
     assignments,
     unassignedPersonIds,
   })
@@ -122,12 +126,13 @@ export function optimizeSeatingAssignments(
   const restarts = positiveInteger(options.restarts, DEFAULT_RESTARTS)
   const fixedPersonIds = new Set(input.fixedPersonIds)
   const random = mulberry32(hashSeed(`${input.seed}:optimizer`))
+  const context = createRuleEvaluationContext(input.project)
   const startedAt = performance.now()
   let iterations = 0
 
   let currentAssignments = { ...input.assignments }
   let currentScore = scoreAssignment(
-    input.project,
+    context,
     currentAssignments,
     input.unassignedPersonIds,
   )
@@ -161,6 +166,13 @@ export function optimizeSeatingAssignments(
     currentAssignments = bestAssignments
     currentScore = bestScore
     let temperature = initialTemperature
+    let movableSeats = activeSeatIds.filter((seatId) => {
+      const personId = currentAssignments[seatId]
+      return Boolean(personId) && !fixedPersonIds.has(personId)
+    })
+    let emptySeats = activeSeatIds.filter(
+      (seatId) => !currentAssignments[seatId],
+    )
 
     reportProgress(restart + 1)
 
@@ -182,13 +194,6 @@ export function optimizeSeatingAssignments(
         }
       }
 
-      const movableSeats = activeSeatIds.filter((seatId) => {
-        const personId = currentAssignments[seatId]
-        return Boolean(personId) && !fixedPersonIds.has(personId)
-      })
-      const emptySeats = activeSeatIds.filter(
-        (seatId) => !currentAssignments[seatId],
-      )
       const canSwap = movableSeats.length >= 2
       const canMove = movableSeats.length >= 1 && emptySeats.length >= 1
 
@@ -197,6 +202,8 @@ export function optimizeSeatingAssignments(
       }
 
       let nextAssignments: Record<string, string> | null = null
+      let movedFromSeat: string | null = null
+      let movedToSeat: string | null = null
       const useMove = canMove && (!canSwap || random() < 0.3)
 
       if (useMove) {
@@ -204,6 +211,8 @@ export function optimizeSeatingAssignments(
           movableSeats[Math.floor(random() * movableSeats.length)]
         const toSeatId = emptySeats[Math.floor(random() * emptySeats.length)]
 
+        movedFromSeat = fromSeatId
+        movedToSeat = toSeatId
         nextAssignments = { ...currentAssignments }
         nextAssignments[toSeatId] = nextAssignments[fromSeatId]
         delete nextAssignments[fromSeatId]
@@ -235,7 +244,7 @@ export function optimizeSeatingAssignments(
       }
 
       const nextScore = scoreAssignment(
-        input.project,
+        context,
         nextAssignments,
         input.unassignedPersonIds,
       )
@@ -247,6 +256,18 @@ export function optimizeSeatingAssignments(
       if (accept) {
         currentAssignments = nextAssignments
         currentScore = nextScore
+
+        if (movedFromSeat && movedToSeat) {
+          const movableIndex = movableSeats.indexOf(movedFromSeat)
+          if (movableIndex >= 0) {
+            movableSeats[movableIndex] = movedToSeat
+          }
+
+          const emptyIndex = emptySeats.indexOf(movedToSeat)
+          if (emptyIndex >= 0) {
+            emptySeats[emptyIndex] = movedFromSeat
+          }
+        }
 
         if (isBetter(currentScore, bestScore)) {
           bestScore = currentScore
