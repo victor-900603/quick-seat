@@ -83,6 +83,8 @@ export interface TogetherRule extends RuleBase {
   tagId: string
   values: string[]
   adjacency: Adjacency
+  /** 未指定時沿用至少一位同值鄰居的舊語意。 */
+  mode?: 'neighbor' | 'cluster'
 }
 
 export type PositionKind = 'front' | 'back' | 'left' | 'right' | 'aisle'

@@ -40,9 +40,11 @@ export const ADJACENCY_LABELS: Record<Adjacency, string> = {
 
 export interface RuleFactoryOptions {
   tagId?: string
+  values?: string[]
   personId?: string
   seatId?: string
   adjacency?: Adjacency
+  mode?: 'neighbor' | 'cluster'
 }
 
 export interface RuleValidationResult {
@@ -128,7 +130,7 @@ export function createRule(
     return {
       ...baseRule(type),
       tagId: options.tagId ?? '',
-      values: [],
+      values: options.values ?? [],
       adjacency,
     }
   }
@@ -136,8 +138,9 @@ export function createRule(
   return {
     ...baseRule(type),
     tagId: options.tagId ?? '',
-    values: [],
+    values: options.values ?? [],
     adjacency,
+    mode: options.mode ?? 'neighbor',
   }
 }
 
@@ -154,10 +157,15 @@ export function normalizeRule(rule: Rule): Rule {
 
   switch (base.type) {
     case 'separate':
+      return {
+        ...base,
+        values: normalizeValues(base.values),
+      }
     case 'together':
       return {
         ...base,
         values: normalizeValues(base.values),
+        mode: base.mode === 'cluster' ? 'cluster' : 'neighbor',
       }
     case 'position':
       return {
@@ -437,7 +445,11 @@ export function formatRuleSummary(
     case 'together': {
       const values =
         rule.values.length > 0 ? rule.values.join('、') : '所有值'
-      return `「${tagName(tags, rule.tagId)}」的 ${values} 至少有一位同值鄰居（${ADJACENCY_LABELS[rule.adjacency]}）`
+      return `「${tagName(tags, rule.tagId)}」的 ${values} ${
+        rule.mode === 'cluster'
+          ? '形成單一群聚'
+          : '至少有一位同值鄰居'
+      }（${ADJACENCY_LABELS[rule.adjacency]}）`
     }
     case 'position': {
       const band =

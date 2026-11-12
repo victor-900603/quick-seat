@@ -200,6 +200,82 @@ function pairKey(left: AssignedSeat, right: AssignedSeat): string {
     : `${right.seatId}|${left.seatId}`
 }
 
+interface TogetherClusterSplit {
+  value: string
+  components: number
+  seats: AssignedSeat[]
+}
+
+function togetherClusterSplits(
+  context: RuleEvaluationContext,
+  seats: AssignedSeat[],
+  rule: Extract<Rule, { type: 'together' }>,
+  tag: TagDef | undefined,
+): TogetherClusterSplit[] {
+  const groups = new Map<string, AssignedSeat[]>()
+
+  for (const seat of seats) {
+    const value = valueOf(seat.person, tag, rule.tagId)
+
+    if (!matchesValue(rule.values, value)) {
+      continue
+    }
+
+    const group = groups.get(value)
+
+    if (group) {
+      group.push(seat)
+    } else {
+      groups.set(value, [seat])
+    }
+  }
+
+  const splits: TogetherClusterSplit[] = []
+
+  for (const [value, group] of groups) {
+    const bySeatId = new Map(group.map((seat) => [seat.seatId, seat]))
+    const visited = new Set<string>()
+    const componentSeats: AssignedSeat[] = []
+    let components = 0
+
+    for (const start of group) {
+      if (visited.has(start.seatId)) {
+        continue
+      }
+
+      components += 1
+      visited.add(start.seatId)
+      const stack = [start]
+
+      while (stack.length > 0) {
+        const current = stack.pop()
+
+        if (!current) {
+          continue
+        }
+
+        componentSeats.push(current)
+
+        for (const neighborId of
+          context.neighborsById[rule.adjacency].get(current.seatId) ?? []) {
+          const neighbor = bySeatId.get(neighborId)
+
+          if (neighbor && !visited.has(neighbor.seatId)) {
+            visited.add(neighbor.seatId)
+            stack.push(neighbor)
+          }
+        }
+      }
+    }
+
+    if (components > 1) {
+      splits.push({ value, components, seats: componentSeats })
+    }
+  }
+
+  return splits
+}
+
 function violation(
   rule: Rule,
   message: string,
@@ -288,33 +364,51 @@ export function evaluateAssignmentWithContext(
       const tag = tagsById.get(rule.tagId)
       const seen = new Set<string>()
 
-      for (const seat of seats) {
-        const value = valueOf(seat.person, tag, rule.tagId)
-
-        if (!matchesValue(rule.values, value)) {
-          continue
-        }
-
-        seen.add(seat.person.id)
-        const hasNeighbor = neighborSeats(
+      if (rule.mode === 'cluster') {
+        for (const split of togetherClusterSplits(
           context,
-          seatsById,
-          seat,
-          rule.adjacency,
-        ).some(
-          (candidate) =>
-            valueOf(candidate.person, tag, rule.tagId) === value,
-        )
-
-        if (!hasNeighbor) {
+          seats,
+          rule,
+          tag,
+        )) {
           ruleViolations.push(
             violation(
               rule,
-              `「${seat.person.name}」缺少同組鄰居（${tag?.name ?? '標籤'}：${value}）。`,
-              [seat],
-              [seat.person],
+              `「${tag?.name ?? '標籤'}」的「${split.value}」分成 ${split.components} 個群聚。`,
+              split.seats,
+              split.seats.map((seat) => seat.person),
             ),
           )
+        }
+      } else {
+        for (const seat of seats) {
+          const value = valueOf(seat.person, tag, rule.tagId)
+
+          if (!matchesValue(rule.values, value)) {
+            continue
+          }
+
+          seen.add(seat.person.id)
+          const hasNeighbor = neighborSeats(
+            context,
+            seatsById,
+            seat,
+            rule.adjacency,
+          ).some(
+            (candidate) =>
+              valueOf(candidate.person, tag, rule.tagId) === value,
+          )
+
+          if (!hasNeighbor) {
+            ruleViolations.push(
+              violation(
+                rule,
+                `「${seat.person.name}」缺少同組鄰居（${tag?.name ?? '標籤'}：${value}）。`,
+                [seat],
+                [seat.person],
+              ),
+            )
+          }
         }
       }
 
@@ -576,26 +670,35 @@ export function scoreAssignmentWithContext(
       const tag = tagsById.get(rule.tagId)
       const seen = new Set<string>()
 
-      for (const seat of seats) {
-        const value = valueOf(seat.person, tag, rule.tagId)
-
-        if (!matchesValue(rule.values, value)) {
-          continue
-        }
-
-        seen.add(seat.person.id)
-        const hasNeighbor = neighborSeats(
+      if (rule.mode === 'cluster') {
+        violations += togetherClusterSplits(
           context,
-          seatsById,
-          seat,
-          rule.adjacency,
-        ).some(
-          (candidate) =>
-            valueOf(candidate.person, tag, rule.tagId) === value,
-        )
+          seats,
+          rule,
+          tag,
+        ).length
+      } else {
+        for (const seat of seats) {
+          const value = valueOf(seat.person, tag, rule.tagId)
 
-        if (!hasNeighbor) {
-          violations += 1
+          if (!matchesValue(rule.values, value)) {
+            continue
+          }
+
+          seen.add(seat.person.id)
+          const hasNeighbor = neighborSeats(
+            context,
+            seatsById,
+            seat,
+            rule.adjacency,
+          ).some(
+            (candidate) =>
+              valueOf(candidate.person, tag, rule.tagId) === value,
+          )
+
+          if (!hasNeighbor) {
+            violations += 1
+          }
         }
       }
 
