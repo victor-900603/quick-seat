@@ -39,12 +39,14 @@ export function PageHeader({
       </div>
 
       {stats || actions ? (
-        <div className="flex flex-wrap items-end justify-end gap-3">
-          {actions}
+        <div className="flex max-w-full flex-col items-end gap-2">
+          {actions ? (
+            <div className="flex flex-wrap justify-end gap-2">{actions}</div>
+          ) : null}
           {stats ? (
             <dl
               aria-label={statsLabel}
-              className="grid grid-cols-2 gap-x-5 gap-y-3 border border-line bg-surface/75 px-4 py-3 sm:grid-cols-4"
+              className="flex flex-wrap justify-end gap-x-5 gap-y-3 border border-line bg-surface/75 px-4 py-3"
             >
               {stats.map((stat) => (
                 <div className="min-w-16" key={stat.label}>

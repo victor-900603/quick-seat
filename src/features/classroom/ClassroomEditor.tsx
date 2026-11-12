@@ -24,6 +24,8 @@ import { getSeatRefs, seatId } from './numbering'
 import { useReadOnlyMode } from '../../lib/useReadOnlyMode'
 import { ShareClassroomDialog } from '../share/components/ShareClassroomDialog'
 import { CLASSROOM_SHARE_HASH_PREFIX } from '../share/classroomShare'
+import { ClassroomTemplateDialog } from '../templates/ClassroomTemplateDialog'
+import { createClassroomFromTemplate } from '../templates/classroomTemplates'
 
 const LEGEND: { type: CellType; className: string }[] = [
   { type: 'seat', className: 'border-accent/40 bg-accent-soft' },
@@ -55,6 +57,7 @@ export function ClassroomEditor() {
   )
   const updateSeatCode = useProjectStore((state) => state.updateSeatCode)
   const updateCellSize = useProjectStore((state) => state.updateCellSize)
+  const replaceClassroom = useProjectStore((state) => state.replaceClassroom)
   const readOnly = useReadOnlyMode()
 
   const [tool, setTool] = useState<EditorTool>('select')
@@ -71,6 +74,7 @@ export function ClassroomEditor() {
   )
   const [paintType, setPaintType] = useState<CellType | null>(null)
   const [sharing, setSharing] = useState(false)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
 
   const refs = useMemo(() => getSeatRefs(classroom), [classroom])
   const refsById = useMemo(
@@ -275,6 +279,7 @@ export function ClassroomEditor() {
   }
 
   const closeShare = useCallback(() => setSharing(false), [])
+  const closeTemplates = useCallback(() => setTemplatesOpen(false), [])
 
   const visibleSelected =
     selected && isInsideClassroom(classroom, selected) ? selected : null
@@ -295,14 +300,24 @@ export function ClassroomEditor() {
     <div className="mx-auto max-w-6xl px-4 py-7 sm:px-6">
       <PageHeader
         actions={
-          <button
-            aria-haspopup="dialog"
-            className="border border-line bg-surface px-3 py-2 text-xs text-ink transition-colors hover:border-accent hover:text-accent"
-            onClick={() => setSharing(true)}
-            type="button"
-          >
-            分享教室
-          </button>
+          <>
+            <button
+              aria-haspopup="dialog"
+              className="border border-line bg-surface px-3 py-2 text-xs text-ink transition-colors hover:border-accent hover:text-accent"
+              onClick={() => setTemplatesOpen(true)}
+              type="button"
+            >
+              教室範本
+            </button>
+            <button
+              aria-haspopup="dialog"
+              className="border border-line bg-surface px-3 py-2 text-xs text-ink transition-colors hover:border-accent hover:text-accent"
+              onClick={() => setSharing(true)}
+              type="button"
+            >
+              分享教室
+            </button>
+          </>
         }
         description="在方格紙上決定座位、走道與禁坐區。走道以整列或整欄建立，筆刷拖曳與矩形填入都會合併為單一步復原。"
         kicker="CLASSROOM"
@@ -409,6 +424,18 @@ export function ClassroomEditor() {
           selected={visibleSelected}
         />
       </div>
+
+      {templatesOpen ? (
+        <ClassroomTemplateDialog
+          onApply={(template) => {
+            replaceClassroom(createClassroomFromTemplate(template))
+            setSelected({ row: 0, col: 0 })
+            setTemplatesOpen(false)
+          }}
+          onClose={closeTemplates}
+          readOnly={readOnly}
+        />
+      ) : null}
 
       {sharing ? (
         <ShareClassroomDialog classroom={classroom} onClose={closeShare} />
