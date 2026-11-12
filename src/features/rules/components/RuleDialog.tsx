@@ -408,6 +408,30 @@ export function RuleDialog({
                   )}
                 </select>
               </div>
+              {draft.type === 'together' ? (
+                <div>
+                  <label className={labelClass} htmlFor="rule-together-mode">
+                    同組方式
+                  </label>
+                  <select
+                    className={fieldClass}
+                    id="rule-together-mode"
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        mode:
+                          event.target.value === 'cluster'
+                            ? 'cluster'
+                            : 'neighbor',
+                      })
+                    }
+                    value={draft.mode ?? 'neighbor'}
+                  >
+                    <option value="neighbor">至少一位同值鄰居</option>
+                    <option value="cluster">形成單一群聚</option>
+                  </select>
+                </div>
+              ) : null}
             </>
           ) : draft.type === 'position' ? (
             <>
