@@ -120,6 +120,7 @@ export interface ProjectStore {
   deleteTag: (tagId: string) => void
   importRoster: (plan: ImportPlan, mode: ImportMode) => ImportOutcome
   addRule: (rule: Rule) => boolean
+  addRules: (rules: Rule[]) => boolean
   updateRule: (rule: Rule) => boolean
   deleteRule: (ruleId: string) => void
   toggleRule: (ruleId: string) => void
@@ -828,6 +829,44 @@ export const useProjectStore = create<ProjectStore>()(
           }
 
           state.project.rules = next
+          refreshAssignmentEvaluation(state.project)
+          touch(state.project)
+        })
+
+        return true
+      },
+
+      addRules: (rules) => {
+        if (rules.length === 0) {
+          return true
+        }
+
+        let provisional = get().project
+
+        for (const rule of rules) {
+          const normalized = normalizeRule(rule)
+          const validation = validateRule(
+            normalized,
+            provisional,
+            normalized.id,
+          )
+
+          if (!validation.valid) {
+            return false
+          }
+
+          provisional = {
+            ...provisional,
+            rules: addRuleToProject(provisional.rules, normalized),
+          }
+        }
+
+        if (provisional.rules === get().project.rules) {
+          return true
+        }
+
+        set((state) => {
+          state.project.rules = provisional.rules
           refreshAssignmentEvaluation(state.project)
           touch(state.project)
         })

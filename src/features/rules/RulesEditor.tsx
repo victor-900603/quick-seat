@@ -8,6 +8,7 @@ import { evaluateAssignment } from './evaluateRules'
 import { createRule, formatRuleSummary } from './ruleOps'
 import { RuleCard } from './components/RuleCard'
 import { RuleDialog } from './components/RuleDialog'
+import { RuleTemplateDialog } from '../templates/RuleTemplateDialog'
 
 interface Notice {
   tone: 'success' | 'error'
@@ -20,10 +21,12 @@ export function RulesEditor() {
   const updateRule = useProjectStore((state) => state.updateRule)
   const deleteRule = useProjectStore((state) => state.deleteRule)
   const toggleRule = useProjectStore((state) => state.toggleRule)
+  const addRules = useProjectStore((state) => state.addRules)
   const readOnly = useReadOnlyMode()
 
   const [dialogRule, setDialogRule] = useState<Rule | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [templateOpen, setTemplateOpen] = useState(false)
   const [notice, setNotice] = useState<Notice | null>(null)
 
   const assignment = project.currentAssignment
@@ -141,6 +144,15 @@ export function RulesEditor() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-8">
       <PageHeader
+        actions={
+          <button
+            className="border border-board bg-board px-3 py-2 text-xs text-chalk transition-colors hover:bg-ink"
+            onClick={() => setTemplateOpen(true)}
+            type="button"
+          >
+            規則範本
+          </button>
+        }
         description="用規則卡描述分開、同組、位置、避開與固定座位，並即時檢查現有座位圖的衝突。"
         kicker="RULES"
         stats={stats}
@@ -339,6 +351,27 @@ export function RulesEditor() {
           onSave={handleSave}
           project={project}
           seatRefs={seatRefs}
+        />
+      ) : null}
+
+      {templateOpen ? (
+        <RuleTemplateDialog
+          onApply={(rules) => {
+            const ok = addRules(rules)
+
+            if (ok) {
+              setNotice({
+                tone: 'success',
+                message: `已套用 ${rules.length} 條規則範本，可使用復原恢復。`,
+              })
+              setTemplateOpen(false)
+            }
+
+            return ok
+          }}
+          onClose={() => setTemplateOpen(false)}
+          project={project}
+          readOnly={readOnly}
         />
       ) : null}
     </section>
