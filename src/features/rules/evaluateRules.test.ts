@@ -9,7 +9,10 @@ import type {
 import { createDefaultProject } from '../project/defaultProject'
 import {
   applyRuleEvaluation,
+  createRuleEvaluationContext,
   evaluateAssignment,
+  evaluateAssignmentWithContext,
+  scoreAssignmentWithContext,
 } from './evaluateRules'
 import { createRule } from './ruleOps'
 
@@ -304,3 +307,108 @@ describe('evaluateAssignment', () => {
     expect(next.violations).toHaveLength(1)
   })
 })
+
+describe('scoreAssignmentWithContext', () => {
+  function expectFastScore(project: Project) {
+    const context = createRuleEvaluationContext(project)
+    const assignment = result(project)
+    const full = evaluateAssignmentWithContext(context, assignment)
+
+    expect(scoreAssignmentWithContext(context, assignment)).toEqual({
+      hardViolationCount: full.hardViolationCount,
+      softCost: full.softCost,
+      violationCount: full.violationCount,
+    })
+  }
+
+  it('五類規則的快速計分與完整判定一致', () => {
+    const separate = createRule('separate', {
+      tagId: GROUP_TAG.id,
+      adjacency: 'all8',
+    })
+    expectFastScore(
+      createProject({
+        assignments: { r0c0: 'person-1', r1c1: 'person-3' },
+        rules: [separate],
+      }),
+    )
+
+    const together = createRule('together', {
+      tagId: GROUP_TAG.id,
+      adjacency: 'orthogonal',
+    })
+    together.values = ['A']
+    expectFastScore(
+      createProject({
+        assignments: { r0c0: 'person-1', r0c1: 'person-2' },
+        rules: [together],
+        unassigned: ['person-3'],
+      }),
+    )
+
+    const position = createRule('position', { tagId: GROUP_TAG.id })
+    position.value = 'A'
+    position.position = 'front'
+    position.band = 1
+    expectFastScore(
+      createProject({
+        assignments: { r1c0: 'person-1', r2c2: 'person-2' },
+        rules: [position],
+        unassigned: ['person-3'],
+      }),
+    )
+
+    const avoid = createRule('avoid', { tagId: GROUP_TAG.id })
+    avoid.valueA = 'A'
+    avoid.valueB = 'B'
+    avoid.adjacency = 'orthogonal'
+    expectFastScore(
+      createProject({
+        assignments: { r0c0: 'person-1', r0c1: 'person-2' },
+        rules: [avoid],
+      }),
+    )
+
+    const pin = createRule('pin', {
+      personId: 'person-1',
+      seatId: 'r2c2',
+    })
+    expectFastScore(
+      createProject({
+        assignments: { r0c0: 'person-1', r0c1: 'person-2' },
+        rules: [pin],
+      }),
+    )
+  })
+
+  it('軟約束、停用與無效規則的計分一致', () => {
+    const soft = createRule('separate', {
+      tagId: GROUP_TAG.id,
+      adjacency: 'orthogonal',
+    })
+    soft.strength = 'soft'
+    soft.weight = 4
+    soft.values = ['A']
+    expectFastScore(
+      createProject({
+        assignments: { r0c0: 'person-1', r0c1: 'person-3' },
+        rules: [soft],
+      }),
+    )
+
+    expectFastScore(
+      createProject({
+        assignments: { r0c0: 'person-1', r0c1: 'person-3' },
+        rules: [{ ...soft, enabled: false }],
+      }),
+    )
+
+    expectFastScore(
+      createProject({
+        assignments: { r0c0: 'person-1', r0c1: 'person-3' },
+        rules: [{ ...soft, tagId: 'missing' }],
+      }),
+    )
+  })
+})
+
