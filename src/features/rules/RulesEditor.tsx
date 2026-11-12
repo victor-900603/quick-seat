@@ -293,11 +293,19 @@ export function RulesEditor() {
             )}
           </section>
 
-          <section className="border border-line bg-paper/65 p-4">
-            <p className="font-mono text-[9px] tracking-[0.2em] text-muted">
-              HOW IT WORKS
-            </p>
-            <ul className="mt-2 space-y-2 text-[11px] leading-5 text-muted">
+          <details className="group border border-line bg-paper/65">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[11px] text-muted transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+              <span className="font-mono text-[9px] tracking-[0.2em]">
+                HOW IT WORKS
+              </span>
+              <span
+                aria-hidden="true"
+                className="font-mono text-sm transition-transform group-open:rotate-45"
+              >
+                +
+              </span>
+            </summary>
+            <ul className="space-y-2 border-t border-line px-4 py-3 text-[11px] leading-5 text-muted">
               <li>
                 <span className="font-medium text-ink">硬約束</span>
                 ：衝突會列為必須處理；下一階段最佳化會優先避免。
@@ -314,7 +322,7 @@ export function RulesEditor() {
                 規則變更後，既有結果會標記為過期；目前重新排座仍只套用固定座位與鎖定。
               </li>
             </ul>
-          </section>
+          </details>
         </aside>
       </div>
 
