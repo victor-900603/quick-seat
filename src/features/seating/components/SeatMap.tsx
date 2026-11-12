@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import type { Classroom, Person, ProjectSettings, SeatRef } from '../../../types/domain'
 import { seatId } from '../../classroom/numbering'
@@ -43,7 +44,7 @@ interface SeatCellProps {
   onSeatClick: (seatIdValue: string) => void
 }
 
-function SeatCell({
+const SeatCell = memo(function SeatCell({
   id,
   row,
   col,
@@ -169,7 +170,7 @@ function SeatCell({
       </span>
     </button>
   )
-}
+})
 
 export function SeatMap({
   classroom,
