@@ -52,6 +52,8 @@ export function ExportEditor() {
     loadExportOptions,
   )
   const [templateOpen, setTemplateOpen] = useState(false)
+  const [previousOptions, setPreviousOptions] =
+    useState<ExportContentOptions | null>(null)
   const closePrintPreview = useCallback(() => setPrintHtml(null), [])
   const closeFullPreview = useCallback(() => setShowFullPreview(false), [])
   const updateOptions = (patch: Partial<ExportContentOptions>) => {
@@ -250,14 +252,31 @@ export function ExportEditor() {
     <section className="mx-auto max-w-6xl px-6 py-8">
       <ExportHeader
         actions={
-          <button
-            aria-haspopup="dialog"
-            className="border border-line bg-surface px-3 py-2 text-xs text-ink transition-colors hover:border-accent hover:text-accent"
-            onClick={() => setTemplateOpen(true)}
-            type="button"
-          >
-            匯出範本
-          </button>
+          <>
+            <button
+              className="border border-line bg-surface px-3 py-2 text-xs text-ink transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-45"
+              disabled={!previousOptions}
+              onClick={() => {
+                if (!previousOptions) {
+                  return
+                }
+
+                setOptions(previousOptions)
+                setPreviousOptions(null)
+              }}
+              type="button"
+            >
+              復原匯出設定
+            </button>
+            <button
+              aria-haspopup="dialog"
+              className="border border-line bg-surface px-3 py-2 text-xs text-ink transition-colors hover:border-accent hover:text-accent"
+              onClick={() => setTemplateOpen(true)}
+              type="button"
+            >
+              匯出範本
+            </button>
+          </>
         }
         stats={stats}
       />
@@ -265,6 +284,7 @@ export function ExportEditor() {
       {templateOpen ? (
         <ExportTemplateDialog
           onApply={(template) => {
+            setPreviousOptions(options)
             setOptions((current) =>
               applyExportTemplate(current, template),
             )
