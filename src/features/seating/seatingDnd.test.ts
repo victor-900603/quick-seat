@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   cursorOffsetModifier,
   DRAG_PREVIEW_OFFSET,
+  isSeatDragEnabled,
+  MAX_DRAG_SEATS,
   SEAT_DROP_TOLERANCE,
   seatCollisionDetection,
 } from './seatingDnd'
@@ -119,5 +121,15 @@ describe('seatCollisionDetection', () => {
 
     expect(result.x).toBe(30 + 100 - 40 + DRAG_PREVIEW_OFFSET)
     expect(result.y).toBe(20 + 120 - 60 + DRAG_PREVIEW_OFFSET)
+  })
+})
+
+describe('isSeatDragEnabled', () => {
+  it('座位數不超過上限時啟用拖曳', () => {
+    expect(isSeatDragEnabled(MAX_DRAG_SEATS)).toBe(true)
+  })
+
+  it('座位數超過上限時停用拖曳', () => {
+    expect(isSeatDragEnabled(MAX_DRAG_SEATS + 1)).toBe(false)
   })
 })

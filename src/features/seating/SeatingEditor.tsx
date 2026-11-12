@@ -44,7 +44,11 @@ import {
   DEFAULT_OPTIMIZER_TIME_LIMIT_MS,
   type SeatingOptimizationProgress,
 } from './optimizer'
-import { seatCollisionDetection, cursorOffsetModifier } from './seatingDnd'
+import {
+  cursorOffsetModifier,
+  isSeatDragEnabled,
+  seatCollisionDetection,
+} from './seatingDnd'
 import { evaluateAssignment } from '../rules/evaluateRules'
 import { formatRuleSummary, RULE_TYPE_LABELS } from '../rules/ruleOps'
 import { RuleViolationsPanel } from '../rules/components/RuleViolationsPanel'
@@ -167,6 +171,7 @@ export function SeatingEditor() {
   const classroom = project.classroom
 
   const refs = useMemo(() => getSeatRefs(classroom), [classroom])
+  const dragEnabled = isSeatDragEnabled(refs.length)
   const refsById = useMemo(
     () => new Map(refs.map((ref) => [ref.id, ref])),
     [refs],
@@ -766,6 +771,11 @@ export function SeatingEditor() {
                   <h3 className="mt-0.5 text-sm font-medium text-ink">
                     座位圖
                   </h3>
+                  {!dragEnabled ? (
+                    <p className="mt-1 text-[10px] leading-4 text-mark">
+                      座位超過 900 個，已停用拖曳；請點選人員與座位安排。
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-3 text-right">
                   {selectedSeatId || selectedPersonId ? (
@@ -866,6 +876,7 @@ export function SeatingEditor() {
                   cellSize={project.settings.cellSize}
                   classroom={classroom}
                   display={display}
+                  dragEnabled={dragEnabled}
                   hasAssignment={Boolean(assignment)}
                   lockedPersonIds={lockedPersonIds}
                   neighborSeatIds={neighborSeatIds}
@@ -897,6 +908,7 @@ export function SeatingEditor() {
 
             <UnassignedPanel
               display={display}
+              dragEnabled={dragEnabled}
               lockedPersonIds={lockedPersonIds}
               onSelect={handleUnassignedSelect}
               persons={unassignedPersons}

@@ -8,6 +8,7 @@ interface UnassignedPanelProps {
   lockedPersonIds: Set<string>
   selectedPersonId: string | null
   readOnly: boolean
+  dragEnabled: boolean
   onSelect: (personId: string) => void
 }
 
@@ -17,6 +18,7 @@ interface UnassignedPersonProps {
   locked: boolean
   selected: boolean
   readOnly: boolean
+  dragEnabled: boolean
   onSelect: (personId: string) => void
 }
 
@@ -26,6 +28,7 @@ function UnassignedPerson({
   locked,
   selected,
   readOnly,
+  dragEnabled,
   onSelect,
 }: UnassignedPersonProps) {
   const label = formatPersonLabel(person, display)
@@ -36,7 +39,7 @@ function UnassignedPerson({
       personId: person.id,
       label: label || person.name,
     },
-    disabled: readOnly,
+    disabled: readOnly || !dragEnabled,
   })
 
   const setNodeRef = (node: HTMLButtonElement | null) => {
@@ -52,14 +55,14 @@ function UnassignedPerson({
           ? 'border-mark bg-mark/10 text-ink'
           : 'border-line bg-surface text-ink hover:border-accent/50'
       } ${
-        readOnly
+        readOnly || !dragEnabled
           ? 'cursor-default'
           : 'cursor-grab select-none active:cursor-grabbing'
       }`}
       onClick={() => onSelect(person.id)}
       ref={setNodeRef}
       type="button"
-      {...(readOnly ? {} : draggable.listeners)}
+      {...(readOnly || !dragEnabled ? {} : draggable.listeners)}
     >
       <span className="min-w-0">
         <span className="block truncate">{person.name}</span>
@@ -101,6 +104,7 @@ export function UnassignedPanel({
   lockedPersonIds,
   selectedPersonId,
   readOnly,
+  dragEnabled,
   onSelect,
 }: UnassignedPanelProps) {
   return (
@@ -126,6 +130,7 @@ export function UnassignedPanel({
           {persons.map((person) => (
             <UnassignedPerson
               display={display}
+              dragEnabled={dragEnabled}
               key={person.id}
               locked={lockedPersonIds.has(person.id)}
               onSelect={onSelect}

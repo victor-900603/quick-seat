@@ -7,6 +7,11 @@ import {
 } from '@dnd-kit/core'
 
 export const SEAT_DROP_TOLERANCE = 12
+export const MAX_DRAG_SEATS = 900
+
+export function isSeatDragEnabled(seatCount: number): boolean {
+  return seatCount <= MAX_DRAG_SEATS
+}
 export const DRAG_PREVIEW_OFFSET = 14
 
 interface Point {

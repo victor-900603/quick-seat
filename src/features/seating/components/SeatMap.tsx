@@ -19,6 +19,7 @@ interface SeatMapProps {
   selectedSeatId: string | null
   selectedPersonId: string | null
   readOnly: boolean
+  dragEnabled: boolean
   cellSize: number
   hasAssignment: boolean
   onSeatClick: (seatIdValue: string) => void
@@ -37,6 +38,7 @@ interface SeatCellProps {
   display: ProjectSettings['display']
   selected: boolean
   readOnly: boolean
+  dragEnabled: boolean
   cellSize: number
   onSeatClick: (seatIdValue: string) => void
 }
@@ -54,6 +56,7 @@ function SeatCell({
   display,
   selected,
   readOnly,
+  dragEnabled,
   cellSize,
   onSeatClick,
 }: SeatCellProps) {
@@ -66,12 +69,12 @@ function SeatCell({
       personId: person?.id,
       label: label || code,
     },
-    disabled: readOnly || !person || locked,
+    disabled: readOnly || !dragEnabled || !person || locked,
   })
   const droppable = useDroppable({
     id: `drop-seat-${id}`,
     data: { type: 'drop-seat', seatId: id },
-    disabled: readOnly || !active || Boolean(person && locked),
+    disabled: readOnly || !dragEnabled || !active || Boolean(person && locked),
   })
 
   const setNodeRef = (node: HTMLButtonElement | null) => {
@@ -110,7 +113,7 @@ function SeatCell({
           ? 'z-10 ring-2 ring-mark ring-offset-1 ring-offset-paper'
           : ''
       } ${
-        person && !readOnly && !locked
+        person && !readOnly && dragEnabled && !locked
           ? 'cursor-grab active:cursor-grabbing'
           : readOnly
             ? 'cursor-default'
@@ -124,7 +127,7 @@ function SeatCell({
       ref={setNodeRef}
       style={{ height: cellSize, width: cellSize }}
       type="button"
-      {...(person && !readOnly ? draggable.listeners : {})}
+      {...(person && !readOnly && dragEnabled ? draggable.listeners : {})}
     >
       {active ? (
         <span className="absolute left-1 top-0.5 font-mono text-[7px] leading-none text-muted/70">
@@ -181,6 +184,7 @@ export function SeatMap({
   selectedSeatId,
   selectedPersonId,
   readOnly,
+  dragEnabled,
   cellSize,
   hasAssignment,
   onSeatClick,
@@ -263,6 +267,7 @@ export function SeatMap({
                   code={ref?.code ?? id}
                   col={col}
                   display={display}
+                  dragEnabled={dragEnabled}
                   id={id}
                   key={id}
                   locked={Boolean(personId && lockedPersonIds.has(personId))}
