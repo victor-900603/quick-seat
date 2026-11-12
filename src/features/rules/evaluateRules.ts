@@ -371,14 +371,16 @@ export function evaluateAssignmentWithContext(
           rule,
           tag,
         )) {
-          ruleViolations.push(
-            violation(
-              rule,
-              `「${tag?.name ?? '標籤'}」的「${split.value}」分成 ${split.components} 個群聚。`,
-              split.seats,
-              split.seats.map((seat) => seat.person),
-            ),
-          )
+          for (let index = 1; index < split.components; index += 1) {
+            ruleViolations.push(
+              violation(
+                rule,
+                `「${tag?.name ?? '標籤'}」的「${split.value}」分成 ${split.components} 個群聚。`,
+                split.seats,
+                split.seats.map((seat) => seat.person),
+              ),
+            )
+          }
         }
       } else {
         for (const seat of seats) {
@@ -676,7 +678,7 @@ export function scoreAssignmentWithContext(
           seats,
           rule,
           tag,
-        ).length
+        ).reduce((total, split) => total + split.components - 1, 0)
       } else {
         for (const seat of seats) {
           const value = valueOf(seat.person, tag, rule.tagId)

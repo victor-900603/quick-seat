@@ -86,6 +86,29 @@ describe('together cluster rule', () => {
     expect(result.violations[1]?.message).toContain('尚未安排座位')
   })
 
+  it('同一值被拆成四個群聚時依多出的群聚數計分', () => {
+    const project = createProject()
+    project.roster.persons.push(person('person-5', '張雅婷', 'A'))
+    project.rules = [clusterRule()]
+    const assignment = {
+      assignments: {
+        r0c0: 'person-1',
+        r0c2: 'person-2',
+        r2c0: 'person-3',
+        r2c2: 'person-5',
+      },
+      unassignedPersonIds: [],
+    }
+    const result = evaluateAssignment(project, assignment)
+    const context = createRuleEvaluationContext(project)
+    const fast = scoreAssignmentWithContext(context, assignment)
+
+    expect(result.violations).toHaveLength(3)
+    expect(result.violations[0]?.message).toContain('分成 4 個群聚')
+    expect(fast.hardViolationCount).toBe(3)
+    expect(fast.violationCount).toBe(3)
+  })
+
   it('正交與含斜角使用不同的連通結果', () => {
     const project = createProject()
     project.rules = [clusterRule('orthogonal')]
