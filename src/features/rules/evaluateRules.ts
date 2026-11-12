@@ -497,6 +497,213 @@ export function evaluateAssignmentWithContext(
   }
 }
 
+export interface RuleScore {
+  hardViolationCount: number
+  softCost: number
+  violationCount: number
+}
+
+export function scoreAssignmentWithContext(
+  context: RuleEvaluationContext,
+  assignment: Pick<AssignmentResult, 'assignments' | 'unassignedPersonIds'>,
+): RuleScore {
+  const seats = collectAssignedSeats(context, assignment.assignments)
+  const seatsById = new Map(seats.map((seat) => [seat.seatId, seat]))
+  const personSeatId = new Map(
+    seats.map((seat) => [seat.person.id, seat.seatId]),
+  )
+  const tagsById = context.tagsById
+  const personsById = context.personsById
+  let hardViolationCount = 0
+  let softCost = 0
+  let violationCount = 0
+
+  const addRuleViolations = (rule: Rule, count: number) => {
+    if (count <= 0) {
+      return
+    }
+
+    violationCount += count
+
+    if (rule.strength === 'hard') {
+      hardViolationCount += count
+    } else {
+      softCost += count * (context.weightByRuleId.get(rule.id) ?? 1)
+    }
+  }
+
+  for (const rule of context.enabledRules) {
+    const validation = context.validationByRuleId.get(rule.id)
+
+    if (!validation?.valid) {
+      addRuleViolations(rule, 1)
+      continue
+    }
+
+    let violations = 0
+
+    if (rule.type === 'separate') {
+      const tag = tagsById.get(rule.tagId)
+      const seen = new Set<string>()
+
+      for (const left of seats) {
+        for (const right of neighborSeats(
+          context,
+          seatsById,
+          left,
+          rule.adjacency,
+        )) {
+          const key = pairKey(left, right)
+
+          if (seen.has(key)) {
+            continue
+          }
+
+          const leftValue = valueOf(left.person, tag, rule.tagId)
+          const rightValue = valueOf(right.person, tag, rule.tagId)
+
+          if (
+            leftValue &&
+            leftValue === rightValue &&
+            matchesValue(rule.values, leftValue)
+          ) {
+            seen.add(key)
+            violations += 1
+          }
+        }
+      }
+    } else if (rule.type === 'together') {
+      const tag = tagsById.get(rule.tagId)
+      const seen = new Set<string>()
+
+      for (const seat of seats) {
+        const value = valueOf(seat.person, tag, rule.tagId)
+
+        if (!matchesValue(rule.values, value)) {
+          continue
+        }
+
+        seen.add(seat.person.id)
+        const hasNeighbor = neighborSeats(
+          context,
+          seatsById,
+          seat,
+          rule.adjacency,
+        ).some(
+          (candidate) =>
+            valueOf(candidate.person, tag, rule.tagId) === value,
+        )
+
+        if (!hasNeighbor) {
+          violations += 1
+        }
+      }
+
+      for (const personId of assignment.unassignedPersonIds) {
+        const person = personsById.get(personId)
+
+        if (!person || seen.has(person.id)) {
+          continue
+        }
+
+        const value = valueOf(person, tag, rule.tagId)
+
+        if (matchesValue(rule.values, value)) {
+          violations += 1
+        }
+      }
+    } else if (rule.type === 'position') {
+      const tag = tagsById.get(rule.tagId)
+      const assignedPersonIds = new Set(
+        seats.map((seat) => seat.person.id),
+      )
+      const subjects = seats.filter(
+        (seat) =>
+          valueOf(seat.person, tag, rule.tagId) === rule.value,
+      )
+
+      for (const seat of subjects) {
+        const cell = context.cellAt
+        let valid = false
+
+        if (rule.position === 'front') {
+          valid = seat.row < rule.band
+        } else if (rule.position === 'back') {
+          valid = seat.row >= context.rows - rule.band
+        } else if (rule.position === 'left') {
+          valid = seat.col < rule.band
+        } else if (rule.position === 'right') {
+          valid = seat.col >= context.cols - rule.band
+        } else {
+          valid = [
+            [seat.row - 1, seat.col],
+            [seat.row + 1, seat.col],
+            [seat.row, seat.col - 1],
+            [seat.row, seat.col + 1],
+          ].some(([row, col]) => cell(row, col)?.type === 'aisle')
+        }
+
+        if (!valid) {
+          violations += 1
+        }
+      }
+
+      for (const person of personsById.values()) {
+        if (
+          assignedPersonIds.has(person.id) ||
+          valueOf(person, tag, rule.tagId) !== rule.value
+        ) {
+          continue
+        }
+
+        violations += 1
+      }
+    } else if (rule.type === 'avoid') {
+      const tagA = tagsById.get(rule.tagIdA)
+      const tagB = tagsById.get(rule.tagIdB)
+      const seen = new Set<string>()
+
+      for (const left of seats) {
+        for (const right of neighborSeats(
+          context,
+          seatsById,
+          left,
+          rule.adjacency,
+        )) {
+          const key = pairKey(left, right)
+
+          if (seen.has(key)) {
+            continue
+          }
+
+          const leftA = valueOf(left.person, tagA, rule.tagIdA)
+          const leftB = valueOf(left.person, tagB, rule.tagIdB)
+          const rightA = valueOf(right.person, tagA, rule.tagIdA)
+          const rightB = valueOf(right.person, tagB, rule.tagIdB)
+
+          if (
+            (leftA === rule.valueA && rightB === rule.valueB) ||
+            (leftB === rule.valueB && rightA === rule.valueA)
+          ) {
+            seen.add(key)
+            violations += 1
+          }
+        }
+      }
+    } else {
+      const person = personsById.get(rule.personId)
+
+      if (!person || personSeatId.get(rule.personId) !== rule.seatId) {
+        violations += 1
+      }
+    }
+
+    addRuleViolations(rule, violations)
+  }
+
+  return { hardViolationCount, softCost, violationCount }
+}
+
 export function evaluateAssignment(
   project: Project,
   assignment: Pick<AssignmentResult, 'assignments' | 'unassignedPersonIds'>,

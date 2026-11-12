@@ -1,7 +1,7 @@
 import type { Project } from '../../types/domain'
 import {
   createRuleEvaluationContext,
-  evaluateAssignmentWithContext,
+  scoreAssignmentWithContext,
   type RuleEvaluationContext,
 } from '../rules/evaluateRules'
 import { hashSeed, mulberry32 } from './allocation'
@@ -66,20 +66,20 @@ function scoreAssignment(
   assignments: Record<string, string>,
   unassignedPersonIds: string[],
 ): Score {
-  const evaluation = evaluateAssignmentWithContext(context, {
+  const score = scoreAssignmentWithContext(context, {
     assignments,
     unassignedPersonIds,
   })
 
   return {
-    hard: evaluation.hardViolationCount,
-    soft: evaluation.softCost,
-    total: evaluation.violationCount,
+    hard: score.hardViolationCount,
+    soft: score.softCost,
+    total: score.violationCount,
     // 硬違反優先於軟成本；總違反數只用來打破平手。
     cost:
-      evaluation.hardViolationCount * 10 +
-      evaluation.softCost * 0.1 +
-      evaluation.violationCount * 0.001,
+      score.hardViolationCount * 10 +
+      score.softCost * 0.1 +
+      score.violationCount * 0.001,
   }
 }
 
