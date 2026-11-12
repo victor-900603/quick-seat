@@ -1,13 +1,15 @@
 import type {
   Adjacency,
   AssignmentResult,
+  Cell,
   Person,
   Project,
   Rule,
   RuleViolation,
   TagDef,
 } from '../../types/domain'
-import { getSeatRefs, parseSeatId } from '../classroom/numbering'
+import { getNeighborSeatIds } from '../classroom/neighbors'
+import { getSeatRefs } from '../classroom/numbering'
 import {
   POSITION_LABELS,
   formatRuleSummary,
@@ -24,6 +26,107 @@ export interface RuleEvaluation {
   violationCount: number
 }
 
+interface SeatGeometry {
+  seatId: string
+  row: number
+  col: number
+  cell: Cell
+}
+
+export interface RuleEvaluationContext {
+  tagsById: Map<string, TagDef>
+  personsById: Map<string, Person>
+  seatsById: Map<string, SeatGeometry>
+  codeBySeatId: Map<string, string>
+  neighborsById: Record<Adjacency, Map<string, string[]>>
+  enabledRules: Rule[]
+  validationByRuleId: Map<
+    string,
+    { valid: boolean; message?: string | null }
+  >
+  summaryByRuleId: Map<string, string>
+  weightByRuleId: Map<string, number>
+  rows: number
+  cols: number
+  cellAt: (row: number, col: number) => Cell | undefined
+}
+
+export function createRuleEvaluationContext(
+  project: Project,
+): RuleEvaluationContext {
+  const tagsById = new Map(
+    project.roster.tags.map((tag) => [tag.id, tag]),
+  )
+  const personsById = new Map(
+    project.roster.persons.map((person) => [person.id, person]),
+  )
+  const seatsById = new Map<string, SeatGeometry>()
+  const codeBySeatId = new Map(
+    getSeatRefs(project.classroom).map((seat) => [seat.id, seat.code]),
+  )
+
+  for (const [index, cell] of project.classroom.cells.entries()) {
+    if (cell.type !== 'seat') {
+      continue
+    }
+
+    const row = Math.floor(index / project.classroom.cols)
+    const col = index % project.classroom.cols
+    const seatId = `r${row}c${col}`
+    seatsById.set(seatId, { seatId, row, col, cell })
+  }
+
+  const neighborsById: Record<Adjacency, Map<string, string[]>> = {
+    orthogonal: new Map(),
+    all8: new Map(),
+  }
+
+  for (const seatId of seatsById.keys()) {
+    neighborsById.orthogonal.set(
+      seatId,
+      getNeighborSeatIds(project.classroom, seatId, 'orthogonal'),
+    )
+    neighborsById.all8.set(
+      seatId,
+      getNeighborSeatIds(project.classroom, seatId, 'all8'),
+    )
+  }
+
+  const enabledRules = project.rules.filter((rule) => rule.enabled)
+  const validationByRuleId = new Map(
+    enabledRules.map((rule) => [
+      rule.id,
+      validateRule(rule, project, rule.id),
+    ]),
+  )
+  const summaryByRuleId = new Map(
+    enabledRules.map((rule) => [
+      rule.id,
+      formatRuleSummary(rule, project),
+    ]),
+  )
+  const weightByRuleId = new Map(
+    project.rules.map((rule) => [rule.id, rule.weight]),
+  )
+
+  return {
+    tagsById,
+    personsById,
+    seatsById,
+    codeBySeatId,
+    neighborsById,
+    enabledRules,
+    validationByRuleId,
+    summaryByRuleId,
+    weightByRuleId,
+    rows: project.classroom.rows,
+    cols: project.classroom.cols,
+    cellAt: (row, col) =>
+      project.classroom.cells[row * project.classroom.cols + col],
+  }
+}
+
+
 interface AssignedSeat {
   seatId: string
   row: number
@@ -32,52 +135,48 @@ interface AssignedSeat {
 }
 
 function collectAssignedSeats(
-  project: Pick<Project, 'classroom' | 'roster'>,
+  context: RuleEvaluationContext,
   assignments: Record<string, string>,
 ): AssignedSeat[] {
-  const personsById = new Map(
-    project.roster.persons.map((person) => [person.id, person]),
-  )
   const seats: AssignedSeat[] = []
 
   for (const [seatId, personId] of Object.entries(assignments)) {
-    const position = parseSeatId(seatId)
-    const person = personsById.get(personId)
+    const geometry = context.seatsById.get(seatId)
+    const person = context.personsById.get(personId)
 
-    if (!position || !person) {
+    if (!geometry || geometry.cell.type !== 'seat' || !person) {
       continue
     }
 
-    const cell =
-      project.classroom.cells[
-        position.row * project.classroom.cols + position.col
-      ]
-
-    if (cell?.type !== 'seat') {
-      continue
-    }
-
-    seats.push({ seatId, ...position, person })
+    seats.push({
+      seatId,
+      row: geometry.row,
+      col: geometry.col,
+      person,
+    })
   }
 
   return seats
 }
 
-function isNeighbor(
-  left: AssignedSeat,
-  right: AssignedSeat,
+function neighborSeats(
+  context: RuleEvaluationContext,
+  seatsById: Map<string, AssignedSeat>,
+  seat: AssignedSeat,
   adjacency: Adjacency,
-): boolean {
-  const rowDistance = Math.abs(left.row - right.row)
-  const colDistance = Math.abs(left.col - right.col)
+): AssignedSeat[] {
+  const ids = context.neighborsById[adjacency].get(seat.seatId) ?? []
+  const result: AssignedSeat[] = []
 
-  if (rowDistance === 0 && colDistance === 0) {
-    return false
+  for (const id of ids) {
+    const neighbor = seatsById.get(id)
+
+    if (neighbor) {
+      result.push(neighbor)
+    }
   }
 
-  return adjacency === 'orthogonal'
-    ? rowDistance + colDistance === 1
-    : rowDistance <= 1 && colDistance <= 1
+  return result
 }
 
 function valueOf(
@@ -116,34 +215,30 @@ function violation(
   }
 }
 
-export function evaluateAssignment(
-  project: Project,
+export function evaluateAssignmentWithContext(
+  context: RuleEvaluationContext,
   assignment: Pick<AssignmentResult, 'assignments' | 'unassignedPersonIds'>,
 ): RuleEvaluation {
-  const tagsById = new Map(
-    project.roster.tags.map((tag) => [tag.id, tag]),
-  )
-  const seats = collectAssignedSeats(project, assignment.assignments)
+  const seats = collectAssignedSeats(context, assignment.assignments)
   const seatsById = new Map(seats.map((seat) => [seat.seatId, seat]))
-  const personsById = new Map(
-    project.roster.persons.map((person) => [person.id, person]),
+  const personSeatId = new Map(
+    seats.map((seat) => [seat.person.id, seat.seatId]),
   )
-  const seatRefs = getSeatRefs(project.classroom)
-  const codeBySeatId = new Map(
-    seatRefs.map((seat) => [seat.id, seat.code]),
-  )
-  const enabledRules = project.rules.filter((rule) => rule.enabled)
+  const tagsById = context.tagsById
+  const personsById = context.personsById
+  const codeBySeatId = context.codeBySeatId
+  const enabledRules = context.enabledRules
   const violations: RuleViolation[] = []
 
   for (const rule of enabledRules) {
-    const validation = validateRule(rule, project, rule.id)
+    const validation = context.validationByRuleId.get(rule.id)
     const ruleViolations: RuleViolation[] = []
 
-    if (!validation.valid) {
+    if (!validation?.valid) {
       ruleViolations.push(
         violation(
           rule,
-          `規則「${formatRuleSummary(rule, project)}」設定無效：${validation.message}`,
+          `規則「${context.summaryByRuleId.get(rule.id) ?? rule.id}」設定無效：${validation?.message ?? '無法驗證規則'}`,
         ),
       )
       violations.push(...ruleViolations)
@@ -155,14 +250,12 @@ export function evaluateAssignment(
       const seen = new Set<string>()
 
       for (const left of seats) {
-        for (const right of seats) {
-          if (
-            left === right ||
-            !isNeighbor(left, right, rule.adjacency)
-          ) {
-            continue
-          }
-
+        for (const right of neighborSeats(
+          context,
+          seatsById,
+          left,
+          rule.adjacency,
+        )) {
           const key = pairKey(left, right)
 
           if (seen.has(key)) {
@@ -203,10 +296,13 @@ export function evaluateAssignment(
         }
 
         seen.add(seat.person.id)
-        const hasNeighbor = seats.some(
+        const hasNeighbor = neighborSeats(
+          context,
+          seatsById,
+          seat,
+          rule.adjacency,
+        ).some(
           (candidate) =>
-            candidate.seatId !== seat.seatId &&
-            isNeighbor(seat, candidate, rule.adjacency) &&
             valueOf(candidate.person, tag, rule.tagId) === value,
         )
 
@@ -253,21 +349,18 @@ export function evaluateAssignment(
       )
 
       for (const seat of subjects) {
-        const cell = (row: number, col: number) =>
-          project.classroom.cells[
-            row * project.classroom.cols + col
-          ]
+        const cell = context.cellAt
 
         let valid = false
 
         if (rule.position === 'front') {
           valid = seat.row < rule.band
         } else if (rule.position === 'back') {
-          valid = seat.row >= project.classroom.rows - rule.band
+          valid = seat.row >= context.rows - rule.band
         } else if (rule.position === 'left') {
           valid = seat.col < rule.band
         } else if (rule.position === 'right') {
-          valid = seat.col >= project.classroom.cols - rule.band
+          valid = seat.col >= context.cols - rule.band
         } else {
           valid = [
             [seat.row - 1, seat.col],
@@ -289,7 +382,7 @@ export function evaluateAssignment(
         }
       }
 
-      for (const person of project.roster.persons) {
+      for (const person of personsById.values()) {
         if (
           assignedPersonIds.has(person.id) ||
           valueOf(person, tag, rule.tagId) !== rule.value
@@ -312,14 +405,12 @@ export function evaluateAssignment(
       const seen = new Set<string>()
 
       for (const left of seats) {
-        for (const right of seats) {
-          if (
-            left === right ||
-            !isNeighbor(left, right, rule.adjacency)
-          ) {
-            continue
-          }
-
+        for (const right of neighborSeats(
+          context,
+          seatsById,
+          left,
+          rule.adjacency,
+        )) {
           const key = pairKey(left, right)
 
           if (seen.has(key)) {
@@ -352,9 +443,7 @@ export function evaluateAssignment(
       }
     } else if (rule.type === 'pin') {
       const person = personsById.get(rule.personId)
-      const actualSeatId = Object.entries(assignment.assignments).find(
-        ([, personId]) => personId === rule.personId,
-      )?.[0]
+      const actualSeatId = personSeatId.get(rule.personId)
       const expectedCode =
         codeBySeatId.get(rule.seatId) ?? rule.seatId
 
@@ -390,10 +479,7 @@ export function evaluateAssignment(
       return total
     }
 
-    const rule = project.rules.find(
-      (candidate) => candidate.id === item.ruleId,
-    )
-    return total + (rule?.weight ?? 1)
+    return total + (context.weightByRuleId.get(item.ruleId) ?? 1)
   }, 0)
   const violatedRuleIds = new Set(
     violations.map((item) => item.ruleId),
@@ -409,6 +495,16 @@ export function evaluateAssignment(
     ruleCount: enabledRules.length,
     violationCount: violations.length,
   }
+}
+
+export function evaluateAssignment(
+  project: Project,
+  assignment: Pick<AssignmentResult, 'assignments' | 'unassignedPersonIds'>,
+): RuleEvaluation {
+  return evaluateAssignmentWithContext(
+    createRuleEvaluationContext(project),
+    assignment,
+  )
 }
 
 export function applyRuleEvaluation(
