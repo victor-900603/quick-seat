@@ -337,7 +337,7 @@ export function ClassroomEditor() {
           />
 
           <div
-            className="overflow-auto bg-paper p-4 sm:p-6"
+            className="paper-grid overflow-auto bg-paper p-4 shadow-[inset_0_0_28px_rgba(23,59,50,0.06)] sm:p-6"
             style={{ maxHeight: 'min(68vh, 760px)' }}
           >
             <ClassroomGrid
