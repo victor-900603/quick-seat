@@ -31,6 +31,8 @@ export interface SeatingConfig {
   partial: boolean
   /** 有非固定規則時，是否執行規則最佳化。預設啟用。 */
   optimize?: boolean
+  /** 只交換已有人員的座位，不移動到空位。 */
+  stayCompact?: boolean
   optimizer?: SeatingOptimizerOptions
 }
 
@@ -403,7 +405,11 @@ export function buildSeatingResult(
           .filter((person) => !assignedBeforeOptimization.has(person.id))
           .map((person) => person.id),
         seed: effectiveSeed,
-        options: config.optimizer,
+        options: {
+          ...config.optimizer,
+          stayCompact:
+            config.stayCompact ?? config.optimizer?.stayCompact ?? false,
+        },
         onProgress,
       })
     : null

@@ -250,4 +250,37 @@ describe('seating optimizer', () => {
     expect(result.timedOut).toBe(true)
     expect(result.assignments).toEqual(assignments)
   })
+
+  it('保持座位連續時只交換人員，不移動到空位', () => {
+    const project = createProject()
+    project.rules = [
+      createRule('separate', {
+        tagId: GROUP_TAG.id,
+        adjacency: 'all8',
+      }),
+    ]
+    const assignments = {
+      r0c0: 'person-1',
+      r0c1: 'person-2',
+    }
+
+    const result = optimizeSeatingAssignments({
+      project,
+      assignments,
+      activeSeatIds: ACTIVE_SEATS,
+      fixedPersonIds: [],
+      unassignedPersonIds: [],
+      seed: 'compact',
+      options: {
+        maxIterations: 5000,
+        timeLimitMs: 2000,
+        stayCompact: true,
+      },
+    })
+
+    expect(new Set(Object.keys(result.assignments))).toEqual(
+      new Set(Object.keys(assignments)),
+    )
+    expect(Object.keys(result.assignments)).toHaveLength(2)
+  })
 })

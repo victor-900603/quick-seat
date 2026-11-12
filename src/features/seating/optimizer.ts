@@ -11,6 +11,8 @@ export interface SeatingOptimizerOptions {
   maxIterations?: number
   /** 最佳化時間上限，毫秒。 */
   timeLimitMs?: number
+  /** 保持已佔用座位不變，只交換人員。 */
+  stayCompact?: boolean
   /** 模擬退火起始溫度。 */
   initialTemperature?: number
   /** 模擬退火結束溫度。 */
@@ -124,6 +126,7 @@ export function optimizeSeatingAssignments(
     options.finalTemperature ?? DEFAULT_FINAL_TEMPERATURE
   const coolingRate = options.coolingRate ?? DEFAULT_COOLING_RATE
   const restarts = positiveInteger(options.restarts, DEFAULT_RESTARTS)
+  const stayCompact = options.stayCompact === true
   const fixedPersonIds = new Set(input.fixedPersonIds)
   const random = mulberry32(hashSeed(`${input.seed}:optimizer`))
   const context = createRuleEvaluationContext(input.project)
@@ -166,13 +169,13 @@ export function optimizeSeatingAssignments(
     currentAssignments = bestAssignments
     currentScore = bestScore
     let temperature = initialTemperature
-    let movableSeats = activeSeatIds.filter((seatId) => {
+    const movableSeats = activeSeatIds.filter((seatId) => {
       const personId = currentAssignments[seatId]
       return Boolean(personId) && !fixedPersonIds.has(personId)
     })
-    let emptySeats = activeSeatIds.filter(
-      (seatId) => !currentAssignments[seatId],
-    )
+    const emptySeats = stayCompact
+      ? []
+      : activeSeatIds.filter((seatId) => !currentAssignments[seatId])
 
     reportProgress(restart + 1)
 
@@ -195,7 +198,8 @@ export function optimizeSeatingAssignments(
       }
 
       const canSwap = movableSeats.length >= 2
-      const canMove = movableSeats.length >= 1 && emptySeats.length >= 1
+      const canMove =
+        movableSeats.length >= 1 && emptySeats.length >= 1
 
       if (!canSwap && !canMove) {
         break
@@ -210,7 +214,6 @@ export function optimizeSeatingAssignments(
         const fromSeatId =
           movableSeats[Math.floor(random() * movableSeats.length)]
         const toSeatId = emptySeats[Math.floor(random() * emptySeats.length)]
-
         movedFromSeat = fromSeatId
         movedToSeat = toSeatId
         nextAssignments = { ...currentAssignments }
@@ -259,11 +262,12 @@ export function optimizeSeatingAssignments(
 
         if (movedFromSeat && movedToSeat) {
           const movableIndex = movableSeats.indexOf(movedFromSeat)
+          const emptyIndex = emptySeats.indexOf(movedToSeat)
+
           if (movableIndex >= 0) {
             movableSeats[movableIndex] = movedToSeat
           }
 
-          const emptyIndex = emptySeats.indexOf(movedToSeat)
           if (emptyIndex >= 0) {
             emptySeats[emptyIndex] = movedFromSeat
           }

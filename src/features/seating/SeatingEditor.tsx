@@ -365,6 +365,7 @@ export function SeatingEditor() {
       seed,
       partial,
       optimize,
+      stayCompact: true,
     }
     const workerRun =
       optimize && activeRuleCount > 0
