@@ -47,6 +47,8 @@ describe('ClassroomEditor', () => {
       </AppProviders>,
     )
 
+    await screen.findByRole('heading', { name: '教室配置' })
+
     fireEvent.pointerDown(getCell(0, 0), {
       pointerType: 'mouse',
       button: 0,
@@ -75,6 +77,7 @@ describe('ClassroomEditor', () => {
       </AppProviders>,
     )
 
+    await screen.findByRole('heading', { name: '教室配置' })
     await user.click(screen.getByRole('button', { name: '禁坐（5）' }))
 
     fireEvent.pointerDown(getCell(0, 0), {
@@ -139,6 +142,7 @@ describe('ClassroomEditor', () => {
       </AppProviders>,
     )
 
+    await screen.findByRole('heading', { name: '教室配置' })
     await user.click(screen.getByRole('button', { name: '橫向走道（3）' }))
 
     fireEvent.pointerDown(getCell(1, 1), {

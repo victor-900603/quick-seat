@@ -61,11 +61,11 @@ describe('App', () => {
     vi.unstubAllGlobals()
   })
 
-  it('預設顯示教室配置', () => {
+  it('預設顯示教室配置', async () => {
     renderApp()
 
     expect(
-      screen.getByRole('heading', { name: '教室配置' }),
+      await screen.findByRole('heading', { name: '教室配置' }),
     ).toBeInTheDocument()
   })
 
@@ -75,7 +75,9 @@ describe('App', () => {
 
     await user.click(screen.getByRole('tab', { name: tab }))
 
-    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: heading }, { timeout: 5000 }),
+    ).toBeInTheDocument()
   })
 
   it('可在名單頁使用全域復原、重做與快捷鍵', async () => {
@@ -83,6 +85,7 @@ describe('App', () => {
     renderApp()
 
     await user.click(screen.getByRole('tab', { name: /名單/ }))
+    await screen.findByRole('heading', { name: '學生名單' })
     addPerson('林品妤', '01')
 
     expect(screen.getByText('林品妤')).toBeVisible()
@@ -116,6 +119,7 @@ describe('App', () => {
     renderApp()
 
     await user.click(screen.getByRole('tab', { name: /名單/ }))
+    await screen.findByRole('heading', { name: '學生名單' })
     addPerson('陳映彤', '02')
 
     fireEvent.keyDown(screen.getByRole('textbox', { name: '搜尋名單' }), {

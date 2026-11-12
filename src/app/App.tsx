@@ -1,5 +1,12 @@
 import * as Tabs from '@radix-ui/react-tabs'
-import { type ComponentType, useCallback, useEffect, useState } from 'react'
+import {
+  Suspense,
+  lazy,
+  type ComponentType,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
 import { StepIcon } from '../components/StepIcon'
 import { HistoryControls } from '../features/project/HistoryControls'
 import { ProjectNameDialog } from '../features/project/ProjectNameDialog'
@@ -13,12 +20,33 @@ import {
   type ClassroomShareState,
 } from '../features/share/classroomShare'
 import { SharedClassroomPreview } from '../features/share/components/SharedClassroomPreview'
-import { ExportPage } from '../pages/ExportPage'
-import { LayoutPage } from '../pages/LayoutPage'
-import { RosterPage } from '../pages/RosterPage'
-import { RulesPage } from '../pages/RulesPage'
-import { SeatingPage } from '../pages/SeatingPage'
 import { TABS, type TabId } from './tabs'
+
+const LayoutPage = lazy(() =>
+  import('../pages/LayoutPage').then((module) => ({
+    default: module.LayoutPage,
+  })),
+)
+const RosterPage = lazy(() =>
+  import('../pages/RosterPage').then((module) => ({
+    default: module.RosterPage,
+  })),
+)
+const RulesPage = lazy(() =>
+  import('../pages/RulesPage').then((module) => ({
+    default: module.RulesPage,
+  })),
+)
+const SeatingPage = lazy(() =>
+  import('../pages/SeatingPage').then((module) => ({
+    default: module.SeatingPage,
+  })),
+)
+const ExportPage = lazy(() =>
+  import('../pages/ExportPage').then((module) => ({
+    default: module.ExportPage,
+  })),
+)
 
 const PAGES: Record<TabId, ComponentType> = {
   classroom: LayoutPage,
@@ -26,6 +54,17 @@ const PAGES: Record<TabId, ComponentType> = {
   rules: RulesPage,
   seating: SeatingPage,
   export: ExportPage,
+}
+
+function PageLoading() {
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-10" role="status">
+      <p className="font-mono text-[9px] tracking-[0.2em] text-muted">
+        LOADING
+      </p>
+      <p className="mt-1 text-sm text-muted">正在載入頁面。</p>
+    </div>
+  )
 }
 
 const seatPattern = [
@@ -191,7 +230,9 @@ function App() {
 
           return (
             <Tabs.Content key={tab.id} value={tab.id}>
-              <Page />
+              <Suspense fallback={<PageLoading />}>
+                <Page />
+              </Suspense>
             </Tabs.Content>
           )
         })}
