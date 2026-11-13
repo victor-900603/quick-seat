@@ -165,6 +165,10 @@ export function loadExportOptions(
         parsed.includeRuleReport,
         defaults.includeRuleReport,
       ),
+      showRuleReportPage: readBoolean(
+        parsed.showRuleReportPage,
+        defaults.showRuleReportPage,
+      ),
     }
   } catch {
     return DEFAULT_EXPORT_CONTENT_OPTIONS

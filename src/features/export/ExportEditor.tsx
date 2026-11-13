@@ -93,11 +93,11 @@ export function ExportEditor() {
   const snapshot = useMemo(() => buildExportSnapshot(project), [project])
   const ruleReport = useMemo(() => buildRuleReport(project), [project])
   const previewHtml = useMemo(
-    () => buildHtmlDocument(snapshot, options),
-    [options, snapshot],
+    () => buildHtmlDocument(snapshot, options, ruleReport),
+    [options, ruleReport, snapshot],
   )
   const paper = getExportPageDimensions(options)
-  const pageCount = countExportPages(snapshot, options)
+  const pageCount = countExportPages(snapshot, options, ruleReport)
   const trackLayout = getExportTrackLayout(snapshot, options)
   const hasAssignment = Boolean(project.currentAssignment)
   const templateFields = useMemo(

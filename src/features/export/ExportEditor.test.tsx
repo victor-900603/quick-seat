@@ -393,6 +393,42 @@ describe('ExportEditor', () => {
     })
   })
 
+  it('勾選規則報告頁後下載 HTML 包含規則報告內容', async () => {
+    const project = createExportFixture()
+    project.rules = [
+      createRule('separate', {
+        tagId: project.roster.tags[0].id,
+        adjacency: 'orthogonal',
+      }),
+    ]
+    prepareProject(project)
+    const user = userEvent.setup()
+    render(<ExportEditor />)
+
+    await user.click(screen.getByRole('tab', { name: '顯示' }))
+    await user.click(screen.getByLabelText('規則報告頁'))
+    await user.click(screen.getByRole('button', { name: '下載 HTML' }))
+
+    const html = downloadTextMock.mock.calls[0][0]
+
+    expect(html).toContain('規則報告')
+    expect(html).toContain('<th scope="col">類型</th>')
+    expect(html).toContain('彼此分開')
+
+    await user.click(screen.getByRole('button', { name: '下載 Excel' }))
+
+    await waitFor(() => {
+      expect(workbookMock).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          showRuleReportPage: true,
+          includeRuleReport: false,
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
   it('下載 HTML 時輸出目前專案內容與正確檔名', async () => {
     const user = userEvent.setup()
     render(<ExportEditor />)

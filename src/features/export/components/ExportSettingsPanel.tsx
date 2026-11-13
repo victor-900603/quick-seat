@@ -513,6 +513,18 @@ export function ExportSettingsPanel({
                   }
                 />
               </div>
+              <div className="mt-3">
+                <ToggleField
+                  checked={options.showRuleReportPage}
+                  label="規則報告頁"
+                  onChange={(checked) =>
+                    onUpdateOptions({ showRuleReportPage: checked })
+                  }
+                />
+                <p className="mt-1 text-[10px] leading-4 text-muted">
+                  可能包含標籤、需求與備註，預設不輸出。
+                </p>
+              </div>
             </div>
 
             <div className="border-t border-line pt-4">

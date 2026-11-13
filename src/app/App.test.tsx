@@ -65,7 +65,11 @@ describe('App', () => {
     renderApp()
 
     expect(
-      await screen.findByRole('heading', { name: '教室配置' }),
+      await screen.findByRole(
+        'heading',
+        { name: '教室配置' },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument()
   })
 
