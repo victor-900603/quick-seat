@@ -7,6 +7,7 @@ import { useProjectStore } from '../project/projectStore'
 import { createRule } from '../rules/ruleOps'
 import { ExportEditor } from './ExportEditor'
 import { downloadBlob, downloadText } from './download'
+import { createPngBlob } from './png'
 import { serializeProject } from './projectFile'
 import { createWorkbookBlob } from './workbook'
 
@@ -19,10 +20,16 @@ vi.mock('./workbook', () => ({
   createWorkbookBlob: vi.fn(),
 }))
 
+vi.mock('./png', () => ({
+  createPngBlob: vi.fn(),
+}))
+
 const workbookBlob = new Blob(['xlsx'])
+const pngBlob = new Blob(['png'], { type: 'image/png' })
 const downloadBlobMock = vi.mocked(downloadBlob)
 const downloadTextMock = vi.mocked(downloadText)
 const workbookMock = vi.mocked(createWorkbookBlob)
+const pngMock = vi.mocked(createPngBlob)
 
 function prepareProject(project = createExportFixture()) {
   useProjectStore.setState({ project })
@@ -34,6 +41,8 @@ describe('ExportEditor', () => {
     prepareProject()
     workbookMock.mockReset()
     workbookMock.mockResolvedValue(workbookBlob)
+    pngMock.mockReset()
+    pngMock.mockResolvedValue(pngBlob)
   })
 
   afterEach(() => {
@@ -52,6 +61,7 @@ describe('ExportEditor', () => {
     ).toBeVisible()
     expect(screen.getByRole('button', { name: '下載 Excel' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '下載 HTML' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '下載 PNG' })).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: '匯出專案 JSON' }))
 
@@ -123,6 +133,50 @@ describe('ExportEditor', () => {
     })
     expect(workbookMock).toHaveBeenCalledTimes(1)
     expect(screen.getByText('已下載 Excel 座位表。')).toBeVisible()
+  })
+
+  it('可下載 PNG 座位表並套用模板與對齊', async () => {
+    const user = userEvent.setup()
+    render(<ExportEditor />)
+
+    fireEvent.change(screen.getByLabelText('座位內容模板'), {
+      target: { value: '{name}｜{tag:分組}' },
+    })
+    await user.click(screen.getByLabelText('靠左'))
+    await user.click(screen.getByRole('button', { name: '下載 PNG' }))
+
+    await waitFor(() => {
+      expect(pngMock).toHaveBeenCalledTimes(1)
+    })
+
+    expect(pngMock).toHaveBeenCalledWith(
+      expect.objectContaining({ projectName: '三年甲班' }),
+      expect.objectContaining({
+        template: '{name}｜{tag:分組}',
+        align: 'left',
+      }),
+    )
+    expect(downloadBlobMock).toHaveBeenCalledWith(
+      pngBlob,
+      expect.stringMatching(
+        /^QuickSeat-三年甲班-\d{8}-\d{4}\.png$/,
+      ),
+    )
+    expect(screen.getByText('已下載 PNG 座位表。')).toBeVisible()
+  })
+
+  it('PNG 產生失敗時顯示錯誤且不下載', async () => {
+    pngMock.mockRejectedValueOnce(new Error('Canvas 無法使用。'))
+    const user = userEvent.setup()
+    render(<ExportEditor />)
+
+    await user.click(screen.getByRole('button', { name: '下載 PNG' }))
+
+    expect(
+      await screen.findByText('Canvas 無法使用。'),
+    ).toBeVisible()
+    expect(downloadBlobMock).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: '下載 PNG' })).toBeEnabled()
   })
 
   it('匯出時套用座位內容模板', async () => {
@@ -610,6 +664,7 @@ describe('ExportEditor', () => {
     ).toBeDisabled()
     expect(screen.getByRole('button', { name: '下載 Excel' })).toBeEnabled()
     expect(screen.getByRole('button', { name: '下載 HTML' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '下載 PNG' })).toBeEnabled()
     expect(
       screen.getByRole('button', { name: '匯出專案 JSON' }),
     ).toBeEnabled()

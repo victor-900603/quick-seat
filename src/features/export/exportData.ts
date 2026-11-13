@@ -528,7 +528,7 @@ export function sanitizeFileNamePart(name: string): string {
 
 export function createExportFileName(
   projectName: string,
-  extension: 'xlsx' | 'html' | 'json',
+  extension: 'xlsx' | 'html' | 'json' | 'png',
   date = new Date(),
 ): string {
   const pad = (value: number) => String(value).padStart(2, '0')

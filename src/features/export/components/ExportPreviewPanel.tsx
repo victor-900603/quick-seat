@@ -8,7 +8,7 @@ import { ExportOutputBar } from './ExportOutputBar'
 
 interface ExportPreviewPanelProps {
   assignedCount: number
-  busy: 'xlsx' | 'html' | 'json' | null
+  busy: 'xlsx' | 'html' | 'json' | 'png' | null
   hasAssignment: boolean
   html: string
   marginMm: number
@@ -23,6 +23,7 @@ interface ExportPreviewPanelProps {
   onOrientationChange: (value: ExportOrientation) => void
   onPaperSizeChange: (value: ExportPaperSize) => void
   onPrint: () => void
+  onPng: () => void
   onWorkbook: () => void
 }
 
@@ -43,6 +44,7 @@ export function ExportPreviewPanel({
   onOrientationChange,
   onPaperSizeChange,
   onPrint,
+  onPng,
   onWorkbook,
 }: ExportPreviewPanelProps) {
   return (
@@ -124,6 +126,7 @@ export function ExportPreviewPanel({
         hasAssignment={hasAssignment}
         onHtml={onHtml}
         onPrint={onPrint}
+        onPng={onPng}
         onWorkbook={onWorkbook}
         stale={stale}
         totalSeats={totalSeats}

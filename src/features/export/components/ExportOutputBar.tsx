@@ -1,11 +1,12 @@
 interface ExportOutputBarProps {
   assignedCount: number
-  busy: 'xlsx' | 'html' | 'json' | null
+  busy: 'xlsx' | 'html' | 'json' | 'png' | null
   hasAssignment: boolean
   stale: boolean
   totalSeats: number
   onHtml: () => void
   onPrint: () => void
+  onPng: () => void
   onWorkbook: () => void
 }
 
@@ -17,6 +18,7 @@ export function ExportOutputBar({
   totalSeats,
   onHtml,
   onPrint,
+  onPng,
   onWorkbook,
 }: ExportOutputBarProps) {
   return (
@@ -42,6 +44,14 @@ export function ExportOutputBar({
             type="button"
           >
             {busy === 'html' ? '產生中…' : '下載 HTML'}
+          </button>
+          <button
+            className="border border-line bg-paper px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={!hasAssignment || busy !== null}
+            onClick={onPng}
+            type="button"
+          >
+            {busy === 'png' ? '產生中…' : '下載 PNG'}
           </button>
           <button
             className="col-span-2 border border-mark bg-mark px-3 py-2 text-xs font-medium text-chalk transition-colors hover:bg-mark/90 disabled:cursor-not-allowed disabled:opacity-45 sm:col-span-1"

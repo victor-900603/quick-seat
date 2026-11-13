@@ -22,6 +22,7 @@ import { buildHtmlDocument, countExportPages } from './html'
 import { HtmlPreviewDialog } from './HtmlPreviewDialog'
 import { PrintPreview } from './PrintPreview'
 import { parseProjectFile, serializeProject } from './projectFile'
+import { createPngBlob } from './png'
 import { buildRuleReport } from './ruleReport'
 import { createWorkbookBlob } from './workbook'
 import { loadExportOptions, saveExportOptions } from './exportPreferences'
@@ -44,7 +45,9 @@ export function ExportEditor() {
     null,
   )
   const [notice, setNotice] = useState<Notice | null>(null)
-  const [busy, setBusy] = useState<'xlsx' | 'html' | 'json' | null>(null)
+  const [busy, setBusy] = useState<
+    'xlsx' | 'html' | 'json' | 'png' | null
+  >(null)
   const [backupBeforeImport, setBackupBeforeImport] = useState(true)
   const [printHtml, setPrintHtml] = useState<string | null>(null)
   const [showFullPreview, setShowFullPreview] = useState(false)
@@ -162,6 +165,22 @@ export function ExportEditor() {
     } catch (error) {
       reportError(
         error instanceof Error ? error.message : '無法產生 HTML 檔案。',
+      )
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handlePng = async () => {
+    setBusy('png')
+
+    try {
+      const blob = await createPngBlob(snapshot, options)
+      downloadBlob(blob, createExportFileName(project.name, 'png', date))
+      setNotice({ tone: 'success', message: '已下載 PNG 座位表。' })
+    } catch (error) {
+      reportError(
+        error instanceof Error ? error.message : '無法產生 PNG 圖檔。',
       )
     } finally {
       setBusy(null)
@@ -348,6 +367,7 @@ export function ExportEditor() {
           }
           onPaperSizeChange={(paperSize) => updateOptions({ paperSize })}
           onPrint={handlePrintPreview}
+          onPng={handlePng}
           onWorkbook={handleWorkbook}
           orientation={options.orientation}
           pageCount={pageCount}
@@ -383,9 +403,9 @@ export function ExportEditor() {
       />
 
       <p className="mt-5 border-t border-line pt-4 text-[11px] leading-6 text-muted">
-        匯出檔會保存在瀏覽器下載資料夾。Excel、HTML 與 PDF
-        的座位文字依「座位內容模板」輸出；Excel 使用固定版面，HTML 與 PDF
-        共用紙張、格高、字級與換行設定。
+        匯出檔會保存在瀏覽器下載資料夾。Excel、HTML、PNG 與 PDF
+        的座位文字依「座位內容模板」輸出；Excel 使用固定版面，HTML、PNG
+        與 PDF 共用紙張、格高、字級與換行設定。
       </p>
 
       {printHtml ? (
