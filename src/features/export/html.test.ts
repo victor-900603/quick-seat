@@ -284,6 +284,9 @@ describe('html export', () => {
     const options = {
       ...DEFAULT_EXPORT_CONTENT_OPTIONS,
       showRuleReportPage: true,
+      showRuleReportSeats: true,
+      showRuleReportPersons: true,
+      showRuleReportNotes: true,
     }
     const html = buildHtmlDocument(snapshot, options, report)
 
@@ -316,6 +319,100 @@ describe('html export', () => {
     expect(html).toContain('軟約束')
     expect(html).not.toContain('<script>alert(1)</script>')
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
+  })
+
+  it('規則報告預設不輸出座位、人員與備註欄位', () => {
+    const snapshot = buildExportSnapshot(createExportFixture())
+    const report: ExportRuleReport = {
+      rows: [
+        {
+          ruleId: 'rule-sensitive',
+          type: 'separate',
+          typeLabel: '分開',
+          summary: '測試規則',
+          strength: 'hard',
+          weight: 5,
+          enabled: true,
+          status: '1 個衝突',
+          violationCount: 1,
+          seatCodes: ['01', '02'],
+          personNames: ['林品妤', '陳柏宇'],
+          note: '敏感<i>備註</i>',
+        },
+      ],
+      totalRules: 1,
+      enabledRules: 1,
+      violationCount: 1,
+      hardViolationCount: 1,
+      softCost: 0,
+      stale: false,
+      timedOut: false,
+    }
+    const options = {
+      ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+      showRuleReportPage: true,
+    }
+    const html = buildHtmlDocument(snapshot, options, report)
+    const table =
+      html.match(/<table class="rule-table">[\s\S]*?<\/table>/)?.[0] ?? ''
+
+    expect(table.match(/<th scope="col">/g)).toHaveLength(6)
+    expect(table).toContain('<th scope="col">類型</th>')
+    expect(table).toContain('<th scope="col">衝突</th>')
+    expect(table).not.toContain('座位')
+    expect(table).not.toContain('人員')
+    expect(table).not.toContain('備註')
+    expect(table).not.toContain('01、02')
+    expect(table).not.toContain('林品妤、陳柏宇')
+    expect(table).not.toContain('敏感')
+  })
+
+  it('開啟規則報告欄位後輸出座位、人員與備註', () => {
+    const snapshot = buildExportSnapshot(createExportFixture())
+    const report: ExportRuleReport = {
+      rows: [
+        {
+          ruleId: 'rule-sensitive',
+          type: 'separate',
+          typeLabel: '分開',
+          summary: '測試規則',
+          strength: 'hard',
+          weight: 5,
+          enabled: true,
+          status: '1 個衝突',
+          violationCount: 1,
+          seatCodes: ['01', '02'],
+          personNames: ['林品妤', '陳柏宇'],
+          note: '敏感<i>備註</i>',
+        },
+      ],
+      totalRules: 1,
+      enabledRules: 1,
+      violationCount: 1,
+      hardViolationCount: 1,
+      softCost: 0,
+      stale: false,
+      timedOut: false,
+    }
+    const options = {
+      ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+      showRuleReportPage: true,
+      showRuleReportSeats: true,
+      showRuleReportPersons: true,
+      showRuleReportNotes: true,
+    }
+    const html = buildHtmlDocument(snapshot, options, report)
+    const table =
+      html.match(/<table class="rule-table">[\s\S]*?<\/table>/)?.[0] ?? ''
+
+    expect(table.match(/<th scope="col">/g)).toHaveLength(9)
+    expect(table).toContain('<th scope="col">座位</th>')
+    expect(table).toContain('<th scope="col">人員</th>')
+    expect(table).toContain('<th scope="col">備註</th>')
+    expect(table).toContain('01、02')
+    expect(table).toContain('林品妤、陳柏宇')
+    expect(table).toContain('敏感&lt;i&gt;備註&lt;/i&gt;')
+    expect(table).not.toContain('<i>備註</i>')
   })
 
   it('開啟規則報告頁但未提供報告或沒有資料列時不產生報告頁', () => {
@@ -363,6 +460,7 @@ describe('html export', () => {
     const options = {
       ...DEFAULT_EXPORT_CONTENT_OPTIONS,
       showRuleReportPage: true,
+      showRuleReportNotes: true,
     }
     const basePages = countExportPages(snapshot, options)
     const pageCount = countExportPages(snapshot, options, report)

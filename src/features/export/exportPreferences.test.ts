@@ -52,6 +52,36 @@ describe('exportPreferences', () => {
     expect(loadExportOptions(storage)).toEqual(options)
   })
 
+  it('可儲存並讀回規則報告欄位選項', () => {
+    const storage = createStorage()
+    const options = {
+      ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+      showRuleReportPage: true,
+      showRuleReportSeats: true,
+      showRuleReportPersons: true,
+      showRuleReportNotes: true,
+    }
+
+    saveExportOptions(options, storage)
+
+    expect(loadExportOptions(storage)).toEqual(options)
+  })
+
+  it('舊存檔缺少規則報告欄位時補上 false', () => {
+    const storage = createStorage({
+      [EXPORT_OPTIONS_KEY]: JSON.stringify({
+        ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+        showRuleReportPage: true,
+      }),
+    })
+    const options = loadExportOptions(storage)
+
+    expect(options.showRuleReportPage).toBe(true)
+    expect(options.showRuleReportSeats).toBe(false)
+    expect(options.showRuleReportPersons).toBe(false)
+    expect(options.showRuleReportNotes).toBe(false)
+  })
+
   it('舊版只有模板與對齊時補上版面預設值', () => {
     const storage = createStorage({
       [EXPORT_OPTIONS_KEY]: JSON.stringify({

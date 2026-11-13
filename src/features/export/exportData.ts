@@ -96,6 +96,9 @@ export interface ExportContentOptions {
   excelHiddenColumns: string[]
   includeRuleReport: boolean
   showRuleReportPage: boolean
+  showRuleReportSeats: boolean
+  showRuleReportPersons: boolean
+  showRuleReportNotes: boolean
 }
 
 export interface ExportPageDimensions {
@@ -273,6 +276,9 @@ export const DEFAULT_EXPORT_CONTENT_OPTIONS: ExportContentOptions = {
   excelHiddenColumns: [],
   includeRuleReport: false,
   showRuleReportPage: false,
+  showRuleReportSeats: false,
+  showRuleReportPersons: false,
+  showRuleReportNotes: false,
 }
 
 export interface ExportTemplateField {

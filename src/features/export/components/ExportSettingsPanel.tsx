@@ -521,8 +521,34 @@ export function ExportSettingsPanel({
                     onUpdateOptions({ showRuleReportPage: checked })
                   }
                 />
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <ToggleField
+                    checked={options.showRuleReportSeats}
+                    disabled={!options.showRuleReportPage}
+                    label="規則報告座位"
+                    onChange={(checked) =>
+                      onUpdateOptions({ showRuleReportSeats: checked })
+                    }
+                  />
+                  <ToggleField
+                    checked={options.showRuleReportPersons}
+                    disabled={!options.showRuleReportPage}
+                    label="規則報告人員"
+                    onChange={(checked) =>
+                      onUpdateOptions({ showRuleReportPersons: checked })
+                    }
+                  />
+                  <ToggleField
+                    checked={options.showRuleReportNotes}
+                    disabled={!options.showRuleReportPage}
+                    label="規則報告備註"
+                    onChange={(checked) =>
+                      onUpdateOptions({ showRuleReportNotes: checked })
+                    }
+                  />
+                </div>
                 <p className="mt-1 text-[10px] leading-4 text-muted">
-                  可能包含標籤、需求與備註，預設不輸出。
+                  可能包含標籤、需求與備註；涉及座位、人員與規則備註的欄位預設不輸出。
                 </p>
               </div>
             </div>
@@ -638,7 +664,7 @@ export function ExportSettingsPanel({
                 />
               </div>
               <p className="mt-2 text-[10px] leading-4 text-muted">
-                規則報告可能包含標籤、需求、備註與衝突資訊，預設不輸出。
+                規則報告可能包含標籤、需求、備註與衝突資訊，預設不輸出。欄位依「顯示」分頁的規則報告選項輸出。
               </p>
             </div>
           </Tabs.Content>

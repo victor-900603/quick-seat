@@ -86,7 +86,7 @@ describe('workbook', () => {
     expect(sheet.data[3][0]).toMatchObject({ align: 'left' })
   })
 
-  it('可選擇加入規則報告工作表', () => {
+  it('可選擇加入規則報告工作表與敏感欄位', () => {
     const snapshot = buildExportSnapshot(createExportFixture())
     const withoutReport = buildWorkbookSheets(snapshot, {
       ...DEFAULT_EXPORT_CONTENT_OPTIONS,
@@ -97,6 +97,9 @@ describe('workbook', () => {
       {
         ...DEFAULT_EXPORT_CONTENT_OPTIONS,
         includeRuleReport: true,
+        showRuleReportSeats: true,
+        showRuleReportPersons: true,
+        showRuleReportNotes: true,
       },
       ruleReport,
     )
@@ -105,7 +108,17 @@ describe('workbook', () => {
     expect(withReport).toHaveLength(3)
     expect(withReport[2].sheet).toBe('規則報告')
     expect(values(withReport[2])[0][0]).toBe('規則報告')
-    expect(values(withReport[2])[2][0]).toBe('類型')
+    expect(values(withReport[2])[2]).toEqual([
+      '類型',
+      '規則',
+      '強度',
+      '權重',
+      '狀態',
+      '衝突',
+      '座位',
+      '人員',
+      '備註',
+    ])
     expect(values(withReport[2])[3]).toEqual([
       '分開',
       '「分組」的「A」彼此分開',
@@ -117,6 +130,75 @@ describe('workbook', () => {
       '林品妤、陳柏宇',
       '考試時分開',
     ])
+  })
+
+  it('規則報告預設不輸出座位、人員與備註', () => {
+    const snapshot = buildExportSnapshot(createExportFixture())
+    const sheet = buildWorkbookSheets(
+      snapshot,
+      {
+        ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+        includeRuleReport: true,
+      },
+      ruleReport,
+    )[2]
+
+    expect(values(sheet)[2]).toEqual([
+      '類型',
+      '規則',
+      '強度',
+      '權重',
+      '狀態',
+      '衝突',
+    ])
+    expect(values(sheet)[3]).toEqual([
+      '分開',
+      '「分組」的「A」彼此分開',
+      '硬約束',
+      5,
+      '1 個衝突',
+      1,
+    ])
+    expect(values(sheet).flat()).not.toContain('01、02')
+    expect(values(sheet).flat()).not.toContain('林品妤、陳柏宇')
+    expect(values(sheet).flat()).not.toContain('考試時分開')
+  })
+
+  it('沒有規則時以實際欄數合併儲存格', () => {
+    const snapshot = buildExportSnapshot(createExportFixture())
+    const report: ExportRuleReport = { ...ruleReport, rows: [] }
+    const defaults = buildWorkbookSheets(
+      snapshot,
+      {
+        ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+        includeRuleReport: true,
+      },
+      report,
+    )[2]
+    const detailed = buildWorkbookSheets(
+      snapshot,
+      {
+        ...DEFAULT_EXPORT_CONTENT_OPTIONS,
+        includeRuleReport: true,
+        showRuleReportSeats: true,
+        showRuleReportPersons: true,
+        showRuleReportNotes: true,
+      },
+      report,
+    )[2]
+
+    expect(values(defaults)[2]).toHaveLength(6)
+    expect(defaults.data[3][0]).toMatchObject({
+      value: '尚無規則',
+      columnSpan: 6,
+    })
+    expect(detailed.data[2]).toHaveLength(9)
+    expect(detailed.data[3][0]).toMatchObject({
+      value: '尚無規則',
+      columnSpan: 9,
+    })
+    expect(defaults.data[0][0]).toMatchObject({ columnSpan: 6 })
+    expect(detailed.data[0][0]).toMatchObject({ columnSpan: 9 })
   })
 
   it('Excel 使用固定欄寬、列高、字級與自動換行', () => {

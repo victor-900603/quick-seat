@@ -169,6 +169,18 @@ export function loadExportOptions(
         parsed.showRuleReportPage,
         defaults.showRuleReportPage,
       ),
+      showRuleReportSeats: readBoolean(
+        parsed.showRuleReportSeats,
+        defaults.showRuleReportSeats,
+      ),
+      showRuleReportPersons: readBoolean(
+        parsed.showRuleReportPersons,
+        defaults.showRuleReportPersons,
+      ),
+      showRuleReportNotes: readBoolean(
+        parsed.showRuleReportNotes,
+        defaults.showRuleReportNotes,
+      ),
     }
   } catch {
     return DEFAULT_EXPORT_CONTENT_OPTIONS

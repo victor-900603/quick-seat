@@ -26,17 +26,32 @@ const RULE_STRENGTH_LABELS: Record<
   soft: '軟約束',
 }
 
-const RULE_REPORT_COLUMNS = [
+const RULE_REPORT_BASE_COLUMNS = [
   '類型',
   '規則',
   '強度',
   '權重',
   '狀態',
   '衝突',
-  '座位',
-  '人員',
-  '備註',
 ]
+
+function getRuleReportColumns(options: ExportContentOptions): string[] {
+  const columns = [...RULE_REPORT_BASE_COLUMNS]
+
+  if (options.showRuleReportSeats) {
+    columns.push('座位')
+  }
+
+  if (options.showRuleReportPersons) {
+    columns.push('人員')
+  }
+
+  if (options.showRuleReportNotes) {
+    columns.push('備註')
+  }
+
+  return columns
+}
 
 export function escapeHtml(value: string): string {
   return value
@@ -167,31 +182,38 @@ function buildRuleReportSummary(report: ExportRuleReport) {
     .join('')}</div>`
 }
 
-function buildRuleReportTable(rows: ExportRuleReportRow[]) {
-  const header = RULE_REPORT_COLUMNS.map(
-    (column) => `<th scope="col">${column}</th>`,
-  ).join('')
+function buildRuleReportTable(
+  rows: ExportRuleReportRow[],
+  options: ExportContentOptions,
+) {
+  const header = getRuleReportColumns(options)
+    .map((column) => `<th scope="col">${column}</th>`)
+    .join('')
   const body = rows
-    .map(
-      (row) =>
-        `<tr><td>${escapeReportText(
-          row.typeLabel,
-        )}</td><td>${escapeReportText(
-          row.summary,
-        )}</td><td>${escapeReportText(
-          RULE_STRENGTH_LABELS[row.strength],
-        )}</td><td class="num">${escapeReportText(
-          row.weight,
-        )}</td><td>${escapeReportText(
-          row.status,
-        )}</td><td class="num">${escapeReportText(
-          row.violationCount,
-        )}</td><td>${escapeReportText(
-          row.seatCodes.join('、'),
-        )}</td><td>${escapeReportText(
-          row.personNames.join('、'),
-        )}</td><td>${escapeReportText(row.note)}</td></tr>`,
-    )
+    .map((row) => {
+      const cells = [
+        `<td>${escapeReportText(row.typeLabel)}</td>`,
+        `<td>${escapeReportText(row.summary)}</td>`,
+        `<td>${escapeReportText(RULE_STRENGTH_LABELS[row.strength])}</td>`,
+        `<td class="num">${escapeReportText(row.weight)}</td>`,
+        `<td>${escapeReportText(row.status)}</td>`,
+        `<td class="num">${escapeReportText(row.violationCount)}</td>`,
+      ]
+
+      if (options.showRuleReportSeats) {
+        cells.push(`<td>${escapeReportText(row.seatCodes.join('、'))}</td>`)
+      }
+
+      if (options.showRuleReportPersons) {
+        cells.push(`<td>${escapeReportText(row.personNames.join('、'))}</td>`)
+      }
+
+      if (options.showRuleReportNotes) {
+        cells.push(`<td>${escapeReportText(row.note)}</td>`)
+      }
+
+      return `<tr>${cells.join('')}</tr>`
+    })
     .join('')
 
   return `<table class="rule-table"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>`
@@ -211,7 +233,7 @@ function buildRuleReportPage(
     options,
   )}<section class="rule-report"><h2 class="section-title">規則報告</h2>${
     showSummary ? buildRuleReportSummary(report) : ''
-  }${buildRuleReportTable(rows)}</section></div>${buildPageFooter(
+  }${buildRuleReportTable(rows, options)}</section></div>${buildPageFooter(
     snapshot,
     options,
     pageIndex,

@@ -93,6 +93,33 @@ describe('ExportEditor', () => {
     expect(tags).toBeEnabled()
   })
 
+  it('規則報告頁關閉時停用規則報告欄位選項', async () => {
+    window.localStorage.clear()
+    const user = userEvent.setup()
+    render(<ExportEditor />)
+
+    await user.click(screen.getByRole('tab', { name: '顯示' }))
+    const seats = screen.getByLabelText('規則報告座位')
+    const persons = screen.getByLabelText('規則報告人員')
+    const notes = screen.getByLabelText('規則報告備註')
+
+    expect(seats).toBeDisabled()
+    expect(persons).toBeDisabled()
+    expect(notes).toBeDisabled()
+
+    await user.click(screen.getByLabelText('規則報告頁'))
+
+    expect(seats).toBeEnabled()
+    expect(persons).toBeEnabled()
+    expect(notes).toBeEnabled()
+
+    await user.click(screen.getByLabelText('規則報告頁'))
+
+    expect(seats).toBeDisabled()
+    expect(persons).toBeDisabled()
+    expect(notes).toBeDisabled()
+  })
+
   it('可隱藏走道文字並套用到 HTML 與 Excel', async () => {
     const user = userEvent.setup()
     render(<ExportEditor />)

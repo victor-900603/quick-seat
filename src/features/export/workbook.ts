@@ -11,7 +11,7 @@ import {
   getExportSeatContent,
   getExportTrackLayout,
 } from './exportData'
-import type { ExportRuleReport } from './ruleReport'
+import type { ExportRuleReport, ExportRuleReportRow } from './ruleReport'
 
 const COLORS = {
   board: '#173b32',
@@ -361,18 +361,100 @@ function buildRosterSheet(
   }
 }
 
-function buildRuleReportSheet(report: ExportRuleReport): Sheet<Blob> {
-  const columns: Array<{ header: string; width: number }> = [
-    { header: '類型', width: 12 },
-    { header: '規則', width: 34 },
-    { header: '強度', width: 10 },
-    { header: '權重', width: 8 },
-    { header: '狀態', width: 14 },
-    { header: '衝突', width: 8 },
-    { header: '座位', width: 22 },
-    { header: '人員', width: 24 },
-    { header: '備註', width: 26 },
+interface RuleReportColumn {
+  header: string
+  width: number
+  render: (row: ExportRuleReportRow) => Cell
+}
+
+function buildRuleReportColumns(
+  options: ExportContentOptions,
+): RuleReportColumn[] {
+  const columns: RuleReportColumn[] = [
+    {
+      header: '類型',
+      width: 12,
+      render: (row) => cell(row.typeLabel, { ...BORDER }),
+    },
+    {
+      header: '規則',
+      width: 34,
+      render: (row) => cell(row.summary, { ...BORDER, wrap: true }),
+    },
+    {
+      header: '強度',
+      width: 10,
+      render: (row) =>
+        cell(row.strength === 'hard' ? '硬約束' : '軟約束', {
+          ...BORDER,
+          align: 'center',
+          textColor: row.strength === 'hard' ? COLORS.mark : COLORS.accent,
+        }),
+    },
+    {
+      header: '權重',
+      width: 8,
+      render: (row) =>
+        cell(row.enabled ? row.weight : '', {
+          ...BORDER,
+          align: 'center',
+        }),
+    },
+    {
+      header: '狀態',
+      width: 14,
+      render: (row) =>
+        cell(row.status, {
+          ...BORDER,
+          textColor: row.enabled
+            ? row.violationCount > 0
+              ? COLORS.mark
+              : COLORS.accent
+            : COLORS.muted,
+        }),
+    },
+    {
+      header: '衝突',
+      width: 8,
+      render: (row) =>
+        cell(row.violationCount, { ...BORDER, align: 'center' }),
+    },
   ]
+
+  if (options.showRuleReportSeats) {
+    columns.push({
+      header: '座位',
+      width: 22,
+      render: (row) =>
+        cell(row.seatCodes.join('、'), { ...BORDER, wrap: true }),
+    })
+  }
+
+  if (options.showRuleReportPersons) {
+    columns.push({
+      header: '人員',
+      width: 24,
+      render: (row) =>
+        cell(row.personNames.join('、'), { ...BORDER, wrap: true }),
+    })
+  }
+
+  if (options.showRuleReportNotes) {
+    columns.push({
+      header: '備註',
+      width: 26,
+      render: (row) => cell(row.note, { ...BORDER, wrap: true }),
+    })
+  }
+
+  return columns
+}
+
+function buildRuleReportSheet(
+  report: ExportRuleReport,
+  options: ExportContentOptions,
+): Sheet<Blob> {
+  const columns = buildRuleReportColumns(options)
   const data: Cell[][] = [
     [
       cell('規則報告', {
@@ -415,32 +497,7 @@ function buildRuleReportSheet(report: ExportRuleReport): Sheet<Blob> {
     ])
   } else {
     for (const row of report.rows) {
-      data.push([
-        cell(row.typeLabel, { ...BORDER }),
-        cell(row.summary, { ...BORDER, wrap: true }),
-        cell(row.strength === 'hard' ? '硬約束' : '軟約束', {
-          ...BORDER,
-          align: 'center',
-          textColor:
-            row.strength === 'hard' ? COLORS.mark : COLORS.accent,
-        }),
-        cell(row.enabled ? row.weight : '', {
-          ...BORDER,
-          align: 'center',
-        }),
-        cell(row.status, {
-          ...BORDER,
-          textColor: row.enabled
-            ? row.violationCount > 0
-              ? COLORS.mark
-              : COLORS.accent
-            : COLORS.muted,
-        }),
-        cell(row.violationCount, { ...BORDER, align: 'center' }),
-        cell(row.seatCodes.join('、'), { ...BORDER, wrap: true }),
-        cell(row.personNames.join('、'), { ...BORDER, wrap: true }),
-        cell(row.note, { ...BORDER, wrap: true }),
-      ])
+      data.push(columns.map((column) => column.render(row)))
     }
   }
 
@@ -463,7 +520,7 @@ export function buildWorkbookSheets(
   ]
 
   if (options.includeRuleReport && ruleReport) {
-    sheets.push(buildRuleReportSheet(ruleReport))
+    sheets.push(buildRuleReportSheet(ruleReport, options))
   }
 
   return sheets
